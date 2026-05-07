@@ -732,7 +732,7 @@ proto_modemmanager_setup() {
     # autoconnect 检查
     json_get_vars autoconnect
     autoconnect="${autoconnect:-1}"
-    if [ "${autoconnect}" = "0" ] && [ "${AUTOCONNECT:-0}" = "1" ]; then
+    if [ "${autoconnect}" = "0" ]; then
         echo "autoconnect disabled, modem registered but not connecting"
         return 0
     fi

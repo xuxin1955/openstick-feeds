@@ -119,7 +119,7 @@ main() {
 
     sleep 1
     
-    timeout 0.2 mmcli --inhibit-device="$DEVICE_PATH" || true
+    timeout 0.6 mmcli --inhibit-device="$DEVICE_PATH" || true
     
     log "QMI modem initialization completed"
     return 0
