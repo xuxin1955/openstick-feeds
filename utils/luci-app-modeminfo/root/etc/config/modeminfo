@@ -1,0 +1,7 @@
+
+config general
+
+config modeminfo
+	option qmi_mode '1'
+	option device_qmi '/dev/wwan0qmi0'
+	option qmi_proxy '1'
