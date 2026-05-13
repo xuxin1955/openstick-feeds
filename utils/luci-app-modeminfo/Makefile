@@ -12,7 +12,6 @@ define Package/$(PKG_NAME)
   CATEGORY:=LuCI
   SUBMENU:=Applications
   TITLE:=Information dashboard for 3G/LTE dongle
-  DEPENDS:=+modeminfo
 endef
 
 define Package/$(PKG_NAME)/install
