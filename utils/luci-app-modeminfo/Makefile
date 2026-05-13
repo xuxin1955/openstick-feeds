@@ -23,10 +23,6 @@ define Package/$(PKG_NAME)/install
 
 	$(INSTALL_DIR) $(1)/www
 	cp -r ./htdocs/* $(1)/www/
-
-	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
-	if [ -f ./po/zh_Hans/modeminfo.po ]; then \
-		$(INSTALL_DATA) ./po/zh_Hans/modeminfo.po \
-			$(1)/usr/lib/lua/luci/i18n/modeminfo.zh_Hans.po; \
-	fi
 endef
+
+$(eval $(call BuildPackage,$(PKG_NAME)))
