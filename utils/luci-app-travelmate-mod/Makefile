@@ -4,7 +4,6 @@ PKG_NAME:=luci-app-travelmate-mod
 PKG_VERSION:=2.4.0
 PKG_RELEASE:=3
 PKG_LICENSE:=Apache-2.0
-PKG_MAINTAINER:=Modified
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -25,6 +24,14 @@ define Package/$(PKG_NAME)/install
 
 	$(INSTALL_DIR) $(1)/www
 	cp -r ./htdocs/* $(1)/www/
+
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
+	for lang in zh_Hans en; do \
+		if [ -f ./po/$$$$lang/travelmate-mod.po ]; then \
+			$(INSTALL_DATA) ./po/$$$$lang/travelmate-mod.po \
+				$(1)/usr/lib/lua/luci/i18n/travelmate-mod.$$$$lang.po; \
+		fi \
+	done
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
