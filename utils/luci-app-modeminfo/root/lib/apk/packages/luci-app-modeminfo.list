@@ -1,0 +1,14 @@
+/usr/share/luci/menu.d/luci-app-modeminfo.json
+/usr/share/rpcd/acl.d/luci-app-modeminfo.json
+/www/luci-static/resources/view/modem/hw.js
+/www/luci-static/resources/view/modem/icons/signal-000-000.svg
+/www/luci-static/resources/view/modem/icons/signal-000-025.svg
+/www/luci-static/resources/view/modem/icons/signal-025-050.svg
+/www/luci-static/resources/view/modem/icons/signal-050-075.svg
+/www/luci-static/resources/view/modem/icons/signal-075-100.svg
+/www/luci-static/resources/view/modem/main.js
+/www/luci-static/resources/view/modem/main（复件）.js
+/www/luci-static/resources/view/modem/setup.js
+/www/luci-static/resources/view/modem/setup（复件）.js
+/www/luci-static/resources/view/status/include/26_modeminfo.js
+/www/luci-static/resources/view/status/include/26_modeminfo（复件）.js

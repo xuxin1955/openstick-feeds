@@ -1,0 +1,10 @@
+/etc/config/modeminfo
+/etc/config/modeminfo（复件）
+/usr/bin/modeminfo
+/usr/share/modeminfo/modem.list
+/usr/share/modeminfo/modeminfo
+/usr/share/modeminfo/scripts/GENERIC
+/usr/share/modeminfo/scripts/GENERIC.at
+/usr/share/modeminfo/scripts/ch_to_band
+/usr/share/modeminfo/scripts/modeminfo
+/usr/share/modeminfo/scripts/probeport.gcom
