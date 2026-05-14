@@ -1,0 +1,136 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Project-Id-Version: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.0\n"
+"Last-Translator: \n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : 2);\n"
+"Language: zh_Hans\n"
+
+msgid "An error has occurred"
+msgstr "发生错误"
+
+msgid "CPU"
+msgstr "处理器"
+
+msgid "CPU Performance"
+msgstr "处理器性能"
+
+msgid "CPU performance information and management."
+msgstr "处理器性能信息和管理."
+
+msgid "CPU performance scaling not available..."
+msgstr "处理器性能调整不可用..."
+
+msgid "Command failed"
+msgstr "命令失败"
+
+msgid "Conservative governor"
+msgstr "Conservative调控器"
+
+msgid "Conservative tunables"
+msgstr "Conservative设置"
+
+msgid "Current frequency"
+msgstr "当前频率"
+
+msgid "Disabled"
+msgstr "已关闭"
+
+msgid "Enable"
+msgstr "开启"
+
+msgid "Enabled"
+msgstr "已开启"
+
+msgid "Failed to get %s init status: %s"
+msgstr "获取%s初始化状态失败: %s"
+
+msgid "Frequency decrease deferral factor."
+msgstr "降低延迟系数。"
+
+msgid "Frequency step in percent of the maximum frequency the governor is allowed to set."
+msgstr "以调速器允许设置的最大频率的百分比设置频率。"
+
+msgid "Frequency value must not be"
+msgstr "频率值不得为"
+
+msgid "GHz"
+msgstr "GHz"
+
+msgid "If checked, it will cause the CPU load estimation code to treat the CPU time spent on executing tasks with \"nice\" levels greater than 0 as CPU idle time."
+msgstr "如果启用，CPU 使用率估算代码会将 CPU 时间用于执行 \"nice\" 级别高于 0 的任务，视为 CPU 空闲时间。"
+
+msgid "If the estimated CPU load is above this value (in percent), the governor will set the frequency to the maximum value."
+msgstr "如果预估的 CPU 负载高于此值（百分比），调控器会将频率设置为最大值。"
+
+msgid "KHz"
+msgstr "KHz"
+
+msgid "MHz"
+msgstr "MHz"
+
+msgid "Maximum frequency"
+msgstr "最大频率"
+
+msgid "Maximum frequency the CPU is allowed to be running."
+msgstr "CPU被允许运行的最大频率。"
+
+msgid "Maximum scaling frequency"
+msgstr "最大调整频率"
+
+msgid "Minimum frequency"
+msgstr "最小频率"
+
+msgid "Minimum frequency the CPU is allowed to be running."
+msgstr "CPU被允许运行的最小频率。"
+
+msgid "Minimum scaling frequency"
+msgstr "最小调整频率"
+
+msgid "No performance data..."
+msgstr "无性能数据..."
+
+msgid "Ondemand governor"
+msgstr "Ondemand调控器"
+
+msgid "Ondemand tunables"
+msgstr "Ondemand设置"
+
+msgid "Performance managment"
+msgstr "性能管理"
+
+msgid "Performance scaling not available for this CPU..."
+msgstr "性能缩放不适用于此 CPU..."
+
+msgid "Run at startup"
+msgstr "在启动时运行"
+
+msgid "Scaling governor"
+msgstr "Scaling控制器"
+
+msgid "Scaling governors implement algorithms to estimate the required CPU capacity."
+msgstr "Scaling控制器使用算法来预估所需的处理器容量。"
+
+msgid "Service action failed \"%s %s\": %s"
+msgstr "服务操作失败 \"%s %s\": %s"
+
+msgid "Threshold value (in percent) used to determine the frequency change direction."
+msgstr "用于确定频率变化方向的阈值(百分比)。"
+
+msgid "default value:"
+msgstr "默认值:"
+
+msgid "higher"
+msgstr "更高"
+
+msgid "lower"
+msgstr "更低"
+
+msgid "than the"
+msgstr "比"
