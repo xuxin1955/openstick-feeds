@@ -53,17 +53,45 @@ reset_wf2_eps_apn() {
 activate_sim() {
     log "Activating SIM for models matching: $ActiveSimModelKeyWords"
     
-    APPLICATION_ID=$(qmicli -d /dev/wwan0qmi0 -p --uim-get-card-status 2>/dev/null | \
-                    awk '/Application ID:/ {getline; gsub(/[[:space:]]/, ""); print $0; exit}')
-    
-    if [ -z "$APPLICATION_ID" ]; then
-        log "Failed to get Application ID"
+    # 获取完整的卡状态输出
+    local card_status
+    card_status=$(qmicli -d /dev/wwan0qmi0 -p --uim-get-card-status 2>/dev/null)
+    if [ -z "$card_status" ]; then
+        log "Failed to get card status"
         return 1
+    fi
+
+    # 优先提取类型为 usim 的 Application ID
+    APPLICATION_ID=$(echo "$card_status" | awk '
+        /Application type:/ && /usim/ { found=1 }
+        found && /Application ID:/ {
+            getline
+            gsub(/[[:space:]]/, "")
+            print $0
+            exit
+        }
+    ')
+
+    if [ -z "$APPLICATION_ID" ]; then
+        # 回退：未找到 usim，使用第一个 Application ID（兼容旧设备）
+        log "USIM application not found, falling back to first application"
+        APPLICATION_ID=$(echo "$card_status" | awk '
+            /Application ID:/ {
+                getline
+                gsub(/[[:space:]]/, "")
+                print $0
+                exit
+            }
+        ')
+        if [ -z "$APPLICATION_ID" ]; then
+            log "Failed to get any Application ID"
+            return 1
+        fi
     fi
     
     log "Found Application ID: $APPLICATION_ID"
     
-    # Activate new session
+    # 激活 provisioning session
     if qmicli -d /dev/wwan0qmi0 -p --uim-change-provisioning-session="slot=1,activate=yes,session-type=primary-gw-provisioning,aid=$APPLICATION_ID"; then
         log "Successfully activated provisioning session with AID: $APPLICATION_ID"
         return 0

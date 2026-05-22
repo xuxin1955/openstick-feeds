@@ -46,11 +46,9 @@ run_qmicli() {
 # 激活逻辑：检查 SIM 卡状态，若缺失则激活配置会话
 activate_if_sim_missing() {
     echo "执行激活检查..."
-    # 获取卡状态
     echo "获取卡状态..."
     card_status=$(run_qmicli --uim-get-card-status)
 
-    # 从卡状态中提取指定槽位的 Personalization state
     personalization_state=$(echo "$card_status" | awk -v slot="$SLOT" '
         $0 ~ "Slot \\[" slot "\\]:" { in_slot = 1; next }
         in_slot && /Personalization state:/ {
@@ -68,7 +66,6 @@ activate_if_sim_missing() {
 
     echo "卡槽 $SLOT 的个人化状态: $personalization_state"
 
-    # 判断是否缺失
     state_lower=$(echo "$personalization_state" | tr '[:upper:]' '[:lower:]')
     if [ "$state_lower" = "ready" ]; then
         echo "SIM 卡已就绪，无需激活。"
@@ -77,19 +74,33 @@ activate_if_sim_missing() {
 
     echo "SIM 卡缺失（状态: $personalization_state），准备激活配置会话..."
 
-    # 从卡状态中提取 Application ID
+    # ========== 修改部分开始 ==========
+    # 优先提取类型为 usim 的 Application ID
     app_id=$(echo "$card_status" | awk '
-        /Application ID:/ { getline; gsub(/[[:space:]]+/, "", $0); print; exit }
+        /Application type:/ && /usim/ { found=1 }
+        found && /Application ID:/ {
+            getline
+            gsub(/[[:space:]]+/, "", $0)
+            print
+            exit
+        }
     ')
+
+    if [ -z "$app_id" ]; then
+        echo "未找到 USIM 应用，回退到第一个 Application ID"
+        app_id=$(echo "$card_status" | awk '
+            /Application ID:/ { getline; gsub(/[[:space:]]+/, "", $0); print; exit }
+        ')
+    fi
 
     if [ -z "$app_id" ]; then
         echo "错误: 未找到 Application ID" >&2
         exit 1
     fi
+    # ========== 修改部分结束 ==========
 
     echo "找到 Application ID: $app_id"
 
-    # 执行激活命令
     activate_cmd="--uim-change-provisioning-session=slot=$SLOT,activate=yes,session-type=primary-gw-provisioning,aid=$app_id"
     echo "执行激活命令: qmicli -d $DEVICE -p $activate_cmd"
     output=$(qmicli -d "$DEVICE" -p "$activate_cmd" 2>&1)
@@ -100,11 +111,8 @@ activate_if_sim_missing() {
     fi
 
     echo "激活配置会话成功"
-    
-    # 在后台启动 inhibit
-    timeout 0.6 mmcli --inhibit-device="$DEVICE_PATH" || true   # 忽略失败
 
-    # 等待足够时间让设备被释放
+    timeout 0.6 mmcli --inhibit-device="$DEVICE_PATH" || true
     sleep 1
 
     echo "设备重新探测完成，请检查 SIM 卡状态。"
