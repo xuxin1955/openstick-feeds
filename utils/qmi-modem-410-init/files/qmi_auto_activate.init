@@ -1,16 +1,16 @@
 #!/bin/sh /etc/rc.common
 
-START=90
+START=98
 STOP=10
 USE_PROCD=1
 
-DELAY=10
+#DELAY=10
 # 依赖：确保 qmicli 和 mmcli 已安装（通常由 libqmi-utils 和 modemmanager 提供）
 # 可在开机启动前等待网络就绪（如果需要）
 # boot() 函数会在系统启动时执行 start_service
 
 start_service() {
-    sleep "$DELAY"
+    #sleep "$DELAY"
     procd_open_instance
     # 设置要执行的命令（使用完整路径）
     procd_set_param command /usr/bin/qmi_auto_activate

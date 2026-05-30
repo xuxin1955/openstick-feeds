@@ -1,12 +1,12 @@
 #!/bin/sh /etc/rc.common
 # Init script for QMI Modem Initialization
 
-START=95
+START=99
 STOP=10
 
 USE_PROCD=1
 PROG=/usr/bin/qmi-modem-410-init
-DELAY=15
+DELAY=25
 
 start_service() {
     sleep "$DELAY"
