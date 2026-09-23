@@ -1,0 +1,15 @@
+{
+	"luci-app-sms-sqlite": {
+		"description": "Grant access to SMS Manager API",
+		"read": {
+			"ubus": {
+				"sms_sqlite": [ "get" ]
+			}
+		},
+		"write": {
+			"ubus": {
+				"sms_sqlite": [ "del", "send", "sync" ]
+			}
+		}
+	}
+}

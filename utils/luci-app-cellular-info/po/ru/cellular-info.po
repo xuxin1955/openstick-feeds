@@ -1,0 +1,86 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-cellular-info\n"
+"Language-Team: Russian\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Cellular Info"
+msgstr "Статус сети"
+
+msgid "Cellular Information"
+msgstr "Информация о сотовой сети"
+
+msgid "Real-time modem and network status."
+msgstr "Статус модема и сети в реальном времени."
+
+msgid "Network Status"
+msgstr "Состояние сети"
+
+msgid "Registration"
+msgstr "Регистрация"
+
+msgid "Operator"
+msgstr "Оператор"
+
+msgid "MCC / MNC"
+msgstr "MCC / MNC"
+
+msgid "Active Band"
+msgstr "Активный диапазон"
+
+msgid "Cell ID (eNB)"
+msgstr "Cell ID (Базовая станция)"
+
+msgid "PCI (Physical Cell ID)"
+msgstr "PCI (Физический Cell ID)"
+
+msgid "TAC (Tracking Area)"
+msgstr "Код зоны (TAC)"
+
+msgid "Signal Quality"
+msgstr "Качество сигнала"
+
+msgid "Device Information"
+msgstr "Информация об устройстве"
+
+msgid "Modem Temperature"
+msgstr "Температура модема"
+
+msgid "Neighboring Cells"
+msgstr "Соседние соты"
+
+msgid "EARFCN"
+msgstr "EARFCN"
+
+msgid "RSSI"
+msgstr "RSSI"
+
+msgid "RSRP"
+msgstr "RSRP"
+
+msgid "RSRQ"
+msgstr "RSRQ"
+
+msgid "SNR / SINR"
+msgstr "SNR / SINR"
+
+msgid "IMEI"
+msgstr "IMEI"
+
+msgid "SIM ICCID"
+msgstr "Номер SIM-карты (ICCID)"
+
+msgid "Loading..."
+msgstr "Загрузка..."
+
+msgid "Unknown"
+msgstr "Неизвестно"
+
+msgid "N/A"
+msgstr "Н/Д"
+
+msgid "No neighbors found"
+msgstr "Соседние соты не найдены"

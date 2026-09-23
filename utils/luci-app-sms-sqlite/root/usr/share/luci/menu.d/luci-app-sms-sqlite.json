@@ -1,0 +1,28 @@
+{
+	"admin/modem": {
+		"title": "Modem",
+		"order": 50,
+		"action": { "type": "firstchild" }
+	},
+	"admin/modem/sms": {
+		"title": "SMS Manager",
+		"order": 1,
+		"action": { "type": "alias", "path": "admin/modem/sms/list" }
+	},
+	"admin/modem/sms/list": {
+		"title": "Inbox",
+		"order": 1,
+		"action": { "type": "view", "path": "sms_sqlite/list" },
+		"depends": {
+			"acl": [ "luci-app-sms-sqlite" ]
+		}
+	},
+	"admin/modem/sms/send": {
+		"title": "Send SMS",
+		"order": 2,
+		"action": { "type": "view", "path": "sms_sqlite/send" },
+		"depends": {
+			"acl": [ "luci-app-sms-sqlite" ]
+		}
+	}
+}

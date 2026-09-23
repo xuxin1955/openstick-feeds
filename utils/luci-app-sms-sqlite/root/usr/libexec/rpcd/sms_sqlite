@@ -1,0 +1,46 @@
+#!/bin/sh
+. /usr/share/libubox/jshn.sh
+
+case "$1" in
+    list)
+        echo '{ "get": { }, "del": { "ids": "string" }, "sync": { }, "send": { "number": "string", "text": "string" } }'
+        ;;
+    call)
+        case "$2" in
+            get)
+                RES=$(sqlite3 -json /etc/sms_archive.db "SELECT id, sender, message, receive_date FROM sms ORDER BY id DESC;" 2>/dev/null)
+                [ -z "$RES" ] && RES="[]"
+                echo "{ \"messages\": $RES }"
+                ;;
+            del)
+                read input
+                json_load "$input"
+                json_get_var ids ids
+                ids=$(echo "$ids" | tr -cd '0-9,')
+                [ -n "$ids" ] && sqlite3 /etc/sms_archive.db "DELETE FROM sms WHERE id IN ($ids);"
+                echo '{"success": true}'
+                ;;
+            sync)
+                if pidof sms_sync >/dev/null; then
+                    echo '{"status": "busy"}'
+                else
+                    /usr/bin/sms_sync
+                    echo '{"status": "ok"}'
+                fi
+                ;;
+            send)
+                read input
+                json_load "$input"
+                json_get_var num number
+                json_get_var txt text
+                num=$(echo "$num" | tr -d "'")
+                txt=$(echo "$txt" | tr -d "'")
+                out=$(/usr/bin/sms_send "$num" "$txt" 2>&1)
+
+                json_init
+                json_add_string output "$out"
+                json_dump
+                ;;
+        esac
+        ;;
+esac

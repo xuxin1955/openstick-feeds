@@ -1,0 +1,15 @@
+{
+    "modem_at": {
+        "description": "Allow executing AT commands via uBus",
+        "read": {
+            "ubus": {
+                "modem_at": [ "exec" ]
+            }
+        },
+        "write": {
+            "ubus": {
+                "modem_at": [ "exec" ]
+            }
+        }
+    }
+}

@@ -1,0 +1,13 @@
+#!/bin/sh
+
+CRON_FILE="/etc/crontabs/root"
+CRON_LINE="*/3 * * * * /usr/bin/sms_sync >/dev/null 2>&1"
+
+[ -f "$CRON_FILE" ] || touch "$CRON_FILE"
+
+if ! grep -Fq "$CRON_LINE" "$CRON_FILE"; then
+	echo "$CRON_LINE" >> "$CRON_FILE"
+	/etc/init.d/cron restart >/dev/null 2>&1 || true
+fi
+
+exit 0
