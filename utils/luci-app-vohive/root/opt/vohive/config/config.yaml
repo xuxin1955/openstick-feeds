@@ -4,6 +4,6 @@ server:
 web:
     username: "admin"
     password: "admin"
-devices: [{id: "410", modem_imei: "861716071097363", device_backend: qmi}]
+devices: []
 vowifi:
     enabled: false

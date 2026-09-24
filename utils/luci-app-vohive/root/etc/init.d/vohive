@@ -4,7 +4,7 @@ PROG=/usr/bin/vohive
 CONFIG=/opt/vohive/config/config.yaml
 start() {
 mkdir -p /opt/vohive/data /opt/vohive/logs /tmp/vohive-tmp
-(sleep 30; cd /opt/vohive; TMPDIR=/tmp/vohive-tmp SQLITE_TMPDIR=/tmp/vohive-tmp start-stop-daemon -S -b -x "$PROG" -- -c "$CONFIG") &
+(sleep 25; cd /opt/vohive; TMPDIR=/tmp/vohive-tmp SQLITE_TMPDIR=/tmp/vohive-tmp start-stop-daemon -S -b -x "$PROG" -- -c "$CONFIG") &
 }
 stop() {
 start-stop-daemon -K -x "$PROG"
