@@ -1,0 +1,9 @@
+server:
+    port: "7575"
+    debug: false
+web:
+    username: "admin"
+    password: "admin"
+devices: [{id: "410", modem_imei: "861716071097363", device_backend: qmi}]
+vowifi:
+    enabled: false

@@ -1,0 +1,16 @@
+<%+header%>
+<div class="cbi-map">
+  <h2>VoHive 模组管理器</h2>
+  <p>管理界面运行在设备 7575 端口：</p>
+  <p><a class="btn btn-primary" href="http://<%=luci.http.getenv("SERVER_ADDR")%>:7575" target="_blank">打开 VoHive 控制台</a></p>
+  <p>默认登录账号：admin ｜ 密码：admin</p>
+  <hr/>
+  <h3>运行状态</h3>
+  <% if running then %>
+  <p><span style="color:green;font-weight:bold;">● 运行中</span>（控制台端口 7575 已监听）</p>
+  <% else %>
+  <p><span style="color:red;font-weight:bold;">● 已停止</span>（控制台端口 7575 未监听）</p>
+  <% end %>
+  <p style="color:#888;font-size:12px;">如需确认，请点击上方按钮打开控制台。</p>
+</div>
+<%+footer%>
