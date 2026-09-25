@@ -1,17 +1,13 @@
 {
-        "admin/modem": {
-                "title": "Modem",
-                "order": 30
-        },
-        "admin/modem/cellular": {
-                "title": "Cellular Info",
-                "order": 2,
-                "action": {
-                        "type": "view",
-                        "path": "cellular_info/index"
-                },
-                "depends": {
-                        "acl": [ "luci-app-cellular-info" ]
-                }
-        }
+	"admin/network/cellular": {
+		"title": "Cellular Info",
+		"order": 2,
+		"action": {
+			"type": "view",
+			"path": "cellular_info/index"
+		},
+		"depends": {
+			"acl": [ "luci-app-cellular-info" ]
+		}
+	}
 }

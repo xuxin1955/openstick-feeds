@@ -1,0 +1,9 @@
+{
+"luci-app-simadmin": {
+"description": "SimAdmin access",
+"read": {
+"ubus": {},
+"uci": []
+}
+}
+}

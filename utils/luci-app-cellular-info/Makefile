@@ -3,6 +3,8 @@ include $(TOPDIR)/rules.mk
 LUCI_TITLE:=LuCI Cellular Information
 LUCI_DEPENDS:=+qmi-utils +modem-at-engine +jsonfilter
 LUCI_PKGARCH:=all
+LUCI_CATEGORY:=Network
+LUCI_SUBMENU:=Modem
 PKG_LICENSE:=GPL-3.0
 
 include $(TOPDIR)/feeds/luci/luci.mk
