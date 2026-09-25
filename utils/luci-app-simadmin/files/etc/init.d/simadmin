@@ -10,4 +10,59 @@ start_service() {
     procd_set_param stdout 1
     procd_set_param stderr 1
     procd_close_instance
+
+    (
+        LOCK=/tmp/simadmin-boot.lock
+        [ -f "$LOCK" ] && exit 0
+        echo $$ > "$LOCK"
+        trap "rm -f $LOCK" EXIT
+
+        FOUND=0
+        for i in $(seq 1 30); do
+            sleep 1
+            mmcli -L 2>/dev/null | grep -q 'Modem/' && { FOUND=1; break; }
+        done
+        [ "$FOUND" = "0" ] && { logger -t simadmin "modem not ready"; exit 0; }
+
+        M=$(mmcli -L 2>/dev/null | grep -oE 'Modem/[0-9]+' | head -1 | cut -d/ -f2)
+        [ -z "$M" ] && { logger -t simadmin "no modem id"; exit 0; }
+
+        mmcli -m "$M" 2>/dev/null | grep -q 'primary sim path' || { logger -t simadmin "no SIM"; exit 0; }
+
+        sleep 20
+
+        if ubus call network.interface.modem status 2>/dev/null | grep -q '"up": true' && ip addr show wwan0 2>/dev/null | grep -q 'inet '; then
+            logger -t simadmin "already up with IP"
+            exit 0
+        fi
+
+        logger -t simadmin "ifup #1"
+        uci -q delete network.modem.disabled
+        uci set network.modem.autoconnect='1'
+        uci commit network
+        timeout 15 ifup modem 2>/dev/null
+
+        for i in $(seq 1 20); do
+            sleep 1
+            if ubus call network.interface.modem status 2>/dev/null | grep -q '"up": true' && ip addr show wwan0 2>/dev/null | grep -q 'inet '; then
+                logger -t simadmin "ok after ifup #1"
+                exit 0
+            fi
+        done
+
+        logger -t simadmin "ifup #2"
+        timeout 10 ifdown modem 2>/dev/null
+        sleep 2
+        timeout 15 ifup modem 2>/dev/null
+
+        for i in $(seq 1 20); do
+            sleep 1
+            if ubus call network.interface.modem status 2>/dev/null | grep -q '"up": true' && ip addr show wwan0 2>/dev/null | grep -q 'inet '; then
+                logger -t simadmin "ok after ifup #2"
+                exit 0
+            fi
+        done
+
+        logger -t simadmin "gave up"
+    ) &
 }
