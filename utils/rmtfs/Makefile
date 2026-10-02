@@ -26,7 +26,7 @@ define Package/rmtfs
   SECTION:=utils
   CATEGORY:=Utilities
   TITLE:=Qualcomm Remote Filesystem Service Implementation
-  DEPENDS:=+libudev-zero +libqrtr +qrtr-ns
+  DEPENDS:=+input-support +libudev-zero +libqrtr +qrtr-ns
 endef
 
 define Build/Compile
