@@ -4,7 +4,7 @@
 USE_PROCD=1
 START=70
 
-LOG_LEVEL="INFO"
+LOG_LEVEL="DEBUG"
 
 start_service() {
 	# Setup ModemManager service
