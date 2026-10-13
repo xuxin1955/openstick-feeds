@@ -9,7 +9,6 @@ PROG=/usr/bin/gc
 CONFIGFS=/sys/kernel/config
 ADBD_INIT=/etc/init.d/adbd
 ADB_FFS=/dev/usb-ffs/adb
-DIAG_FFS=/dev/ffs-diag
 ROLE_PATH=/sys/class/udc/ci_hdrc.0/device/driver/ci_hdrc.0/role
 
 get_config() {
@@ -70,25 +69,6 @@ stop_adbd() {
 	fi
 }
 
-configure_diag() {
-	mkdir -p "$CONFIGFS/usb_gadget/g1/functions/ffs.diag"
-	CFG=$(ls -d "$CONFIGFS/usb_gadget/g1/configs/"*/ 2>/dev/null | head -1)
-	[ -e "${CFG}ffs.diag" ] || ln -s "$CONFIGFS/usb_gadget/g1/functions/ffs.diag" "${CFG}ffs.diag"
-	echo 0x05c6 > "$CONFIGFS/usb_gadget/g1/idVendor"
-	echo 0x901d > "$CONFIGFS/usb_gadget/g1/idProduct"
-	mkdir -p "$DIAG_FFS"
-	grep -qs " $DIAG_FFS " /proc/mounts || mount -t functionfs diag "$DIAG_FFS"
-	killall diag-router 2>/dev/null
-	/usr/bin/diag-router &
-	sleep 2
-}
-
-stop_diag() {
-	killall diag-router 2>/dev/null
-	sleep 1
-	umount "$DIAG_FFS" 2>/dev/null || umount -l "$DIAG_FFS" 2>/dev/null
-}
-
 configure_gadget() {
 	local rndis mass mass_path serial hid ecm ncm acm printer midi
 
@@ -137,9 +117,6 @@ configure_gadget() {
 		gc -a ffs
 		start_adbd || return 1
 	fi
-	if [ "$(get_config diag 0)" -eq 1 ]; then
-		configure_diag
-	fi
 
 	gc -e
 }
@@ -171,7 +148,6 @@ start_service() {
 }
 
 stop_service() {
-	stop_diag
 	stop_adbd
 	gc -d
 	gc -c
