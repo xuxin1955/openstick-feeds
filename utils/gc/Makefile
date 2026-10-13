@@ -57,6 +57,9 @@ define Package/gc/install
 
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/gc $(1)/usr/bin/
+    $(INSTALL_BIN) ./files/diag-router $(1)/usr/bin/
+    $(INSTALL_BIN) ./files/rpmsgexport $(1)/usr/bin/
+    $(INSTALL_BIN) ./files/send_data $(1)/usr/bin/
 endef
 
 define Package/luci-app-gc/install
