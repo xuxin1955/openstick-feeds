@@ -74,6 +74,20 @@ stop_adbd() {
 configure_diag() {
 	mkdir -p "$CONFIGFS/usb_gadget/g1/functions/ffs.diag"
 	CFG=$(ls -d "$CONFIGFS/usb_gadget/g1/configs/"*/ 2>/dev/null | head -1)
+	if [ -z "$CFG" ]; then
+		CFG="$CONFIGFS/usb_gadget/g1/configs/c.1/"
+		mkdir -p "$CFG/strings/0x409"
+		echo 500 > "$CFG/MaxPower"
+		echo 0x80 > "$CFG/bmAttributes"
+		echo 0xEF > "$CONFIGFS/usb_gadget/g1/bDeviceClass"
+		echo 0x02 > "$CONFIGFS/usb_gadget/g1/bDeviceSubClass"
+		echo 0x01 > "$CONFIGFS/usb_gadget/g1/bDeviceProtocol"
+	fi
+
+	mkdir -p "$CONFIGFS/usb_gadget/g1/strings/0x409"
+	echo "Qualcomm" > "$CONFIGFS/usb_gadget/g1/strings/0x409/manufacturer"
+	echo "Android" > "$CONFIGFS/usb_gadget/g1/strings/0x409/product"
+	echo "020002a15c73" > "$CONFIGFS/usb_gadget/g1/strings/0x409/serialnumber"
 	[ -e "${CFG}ffs.diag" ] || ln -s "$CONFIGFS/usb_gadget/g1/functions/ffs.diag" "${CFG}ffs.diag"
 	echo 0x05c6 > "$CONFIGFS/usb_gadget/g1/idVendor"
 	echo 0x901d > "$CONFIGFS/usb_gadget/g1/idProduct"
