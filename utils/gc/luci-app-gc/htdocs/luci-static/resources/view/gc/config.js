@@ -45,6 +45,9 @@ return view.extend({
 		o = s.option(form.Flag, 'adb', _('ADB 调试'));
 		o.rmempty = false;
 		o.description = _('启用 ADB 调试功能。设备上需存在 /etc/init.d/adbd。');
+                o = s.option(form.Flag, 'diag', _('DIAG 诊断'));
+                o.rmempty = false;
+                o.description = _('启用高通 DIAG 诊断端口。901D 改串端口。');
 
 		o = s.option(form.Flag, 'rndis', _('RNDIS 网络'));
 		o.rmempty = false;
