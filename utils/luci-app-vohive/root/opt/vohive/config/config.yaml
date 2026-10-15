@@ -1,9 +1,0 @@
-server:
-    port: "7575"
-    debug: false
-web:
-    username: "admin"
-    password: "admin"
-devices: []
-vowifi:
-    enabled: false

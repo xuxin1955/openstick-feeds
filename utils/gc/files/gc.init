@@ -9,8 +9,6 @@ PROG=/usr/bin/gc
 CONFIGFS=/sys/kernel/config
 ADBD_INIT=/etc/init.d/adbd
 ADB_FFS=/dev/usb-ffs/adb
-DIAG_FFS=/dev/ffs-diag
-RPMSG_CTRL=/dev/rpmsg_ctrl2
 ROLE_PATH=/sys/class/udc/ci_hdrc.0/device/driver/ci_hdrc.0/role
 
 get_config() {
@@ -71,66 +69,6 @@ stop_adbd() {
 	fi
 }
 
-configure_diag() {
-	mkdir -p "$CONFIGFS/usb_gadget/g1/functions/ffs.diag"
-	CFG=$(ls -d "$CONFIGFS/usb_gadget/g1/configs/"*/ 2>/dev/null | head -1)
-	if [ -z "$CFG" ]; then
-		CFG="$CONFIGFS/usb_gadget/g1/configs/c.1/"
-		mkdir -p "$CFG/strings/0x409"
-		echo 500 > "$CFG/MaxPower"
-		echo 0x80 > "$CFG/bmAttributes"
-		echo 0xEF > "$CONFIGFS/usb_gadget/g1/bDeviceClass"
-		echo 0x02 > "$CONFIGFS/usb_gadget/g1/bDeviceSubClass"
-		echo 0x01 > "$CONFIGFS/usb_gadget/g1/bDeviceProtocol"
-	fi
-
-	mkdir -p "$CONFIGFS/usb_gadget/g1/strings/0x409"
-	echo "Qualcomm" > "$CONFIGFS/usb_gadget/g1/strings/0x409/manufacturer"
-	echo "Android" > "$CONFIGFS/usb_gadget/g1/strings/0x409/product"
-	echo "020002a15c73" > "$CONFIGFS/usb_gadget/g1/strings/0x409/serialnumber"
-	[ -e "${CFG}ffs.diag" ] || ln -s "$CONFIGFS/usb_gadget/g1/functions/ffs.diag" "${CFG}ffs.diag"
-	echo 0x05c6 > "$CONFIGFS/usb_gadget/g1/idVendor"
-	echo 0x901d > "$CONFIGFS/usb_gadget/g1/idProduct"
-
-	mkdir -p "$DIAG_FFS"
-	grep -qs " $DIAG_FFS " /proc/mounts || mount -t functionfs diag "$DIAG_FFS"
-
-	i=0
-	while [ $i -lt 60 ]; do
-		if grep -q "^DIAG$" /sys/class/rpmsg/rpmsg*/name 2>/dev/null; then
-			break
-		fi
-		rpmsgexport "$RPMSG_CTRL" DIAG 2>/dev/null
-		rpmsgexport "$RPMSG_CTRL" DIAG_CNTL 2>/dev/null
-		rpmsgexport "$RPMSG_CTRL" DIAG_CMD 2>/dev/null
-		sleep 2
-		i=$((i+1))
-	done
-
-	echo "" > "$CONFIGFS/usb_gadget/g1/UDC" 2>/dev/null
-	sleep 1
-
-	killall diag-router 2>/dev/null
-	sleep 1
-	/usr/bin/diag-router > /tmp/dr.log 2>&1 &
-
-	i=0
-	while [ $i -lt 20 ]; do
-		if ls -l /proc/$(pgrep -n diag-router)/fd 2>/dev/null | grep -q "ep0"; then
-			break
-		fi
-		sleep 1
-		i=$((i+1))
-	done
-	sleep 1
-}
-
-stop_diag() {
-	killall diag-router 2>/dev/null
-	sleep 1
-	umount "$DIAG_FFS" 2>/dev/null || umount -l "$DIAG_FFS" 2>/dev/null
-}
-
 configure_gadget() {
 	local rndis mass mass_path serial hid ecm ncm acm printer midi
 
@@ -179,9 +117,6 @@ configure_gadget() {
 		gc -a ffs
 		start_adbd || return 1
 	fi
-	if [ "$(get_config diag 0)" -eq 1 ]; then
-		configure_diag
-	fi
 
 	gc -e
 }
@@ -213,7 +148,6 @@ start_service() {
 }
 
 stop_service() {
-	stop_diag
 	stop_adbd
 	gc -d
 	gc -c
