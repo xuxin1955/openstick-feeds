@@ -306,13 +306,23 @@ modemmanager_set_allowed_mode() {
 	local device="$1"
 	local interface="$2"
 	local allowedmode="$3"
+	local retry
 
 	echo "setting allowed mode to '${allowedmode}'"
-	mmcli --modem="${device}" --set-allowed-modes="${allowedmode}" || {
-		proto_notify_error "${interface}" MM_INVALID_ALLOWED_MODES_LIST
-		proto_block_restart "${interface}"
-		return 1
-	}
+	# On reconnect the modem may still be settling (re-enumerated or
+	# tearing down the previous bearer), and ModemManager transiently
+	# rejects the mode change. Retry a few times, then continue anyway:
+	# the modes were already applied by a previous successful setup, so
+	# a failed re-apply must not abort the whole connection attempt.
+	for retry in 1 2 3; do
+		mmcli --modem="${device}" --set-allowed-modes="${allowedmode}" && return 0
+		[ "${retry}" = "3" ] && break
+		echo "setting allowed mode failed, retrying in 3s (${retry}/3)"
+		sleep 3
+	done
+
+	echo "warning: could not set allowed mode '${allowedmode}', continuing"
+	return 0
 }
 
 modemmanager_check_state_failed() {
