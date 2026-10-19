@@ -4,6 +4,12 @@
 . /lib/netifd/netifd-proto.sh
 . /usr/share/ModemManager/modemmanager.common
 
+# When set to 1, the monitor is being stopped by procd (service stop/restart)
+# and the availability of all interfaces must be cleared. It is NOT set when
+# the mmcli -M listener dies on its own, in which case we just reconnect.
+MONITOR_STOPPING=0
+MONITOR_CHILD=""
+
 trap_with_arg() {
 	func="$1" ; shift
 	pid="$1" ; shift
@@ -16,6 +22,8 @@ trap_with_arg() {
 func_trap() {
 	local monitor_cache_line object
 
+	MONITOR_STOPPING=1
+
 	logger "ModemManager-monitor[$$]" "Sending signal ${1} ..."
 
 	# Set all configured logical interfaces to unavailable
@@ -24,10 +32,16 @@ func_trap() {
 		mm_monitor_cache_remove "$object"
 	done < ${MODEMMANAGER_MONITOR_CACHE}
 
-	kill "-${1}" "$2" 2>/dev/null
+	# stop the listener pipeline; the mmcli -M process will exit on its own
+	# once the pipe reader is gone
+	[ -n "${MONITOR_CHILD}" ] && kill "-${1}" "${MONITOR_CHILD}" 2>/dev/null
 }
 
-mm_monitor_get_sysfspath() {
+# Returns the value of the 'modem.generic.device' field (field 2) of the
+# cached monitor entry for the given D-Bus object path. This is the value
+# matched against the uci 'device' option by mm_get_modem_config(), NOT the
+# physdev path (field 3) - do not "fix" this to field 3.
+mm_monitor_get_generic_device() {
 	local object="$1"
 
 	# If no monitor cache file, we're done
@@ -41,7 +55,7 @@ mm_monitor_cache_remove() {
 
 	local device cfg
 
-	device=$(mm_monitor_get_sysfspath "${object}")
+	device=$(mm_monitor_get_generic_device "${object}")
 
 	cfg=$(mm_get_modem_config "${device}")
 	if [ -n "${cfg}" ]; then
@@ -96,7 +110,7 @@ mm_monitor_cache_del() {
 
 mm_monitor_cache() {
 	local line="$1"
-	local event object modemstatus device pyhsdev
+	local event object
 
 	event="$(echo "$line" | cut -d " " -f 1)"
 	object="$(echo "$line" | cut -d " " -f 2)"
@@ -109,6 +123,34 @@ mm_monitor_cache() {
 			mm_monitor_cache_del "$object"
 			;;
 	esac
+}
+
+# Reconcile the monitor cache with the list of modems currently known to
+# ModemManager. Needed after reconnecting the mmcli -M listener, because
+# the listener only reports incremental events and would otherwise miss
+# modems that appeared or disappeared while it was down.
+mm_monitor_reconcile() {
+	local paths path cache_snapshot line
+
+	paths="$(mmcli -L 2>/dev/null | grep -oE '/org/freedesktop/ModemManager1/Modem/[0-9]+' | sort -u || true)"
+
+	# remove stale cache entries (cached but no longer present in MM)
+	if [ -f "${MODEMMANAGER_MONITOR_CACHE}" ]; then
+		cache_snapshot="$(cat "${MODEMMANAGER_MONITOR_CACHE}" 2>/dev/null || true)"
+		while IFS= read -r line; do
+			[ -n "${line}" ] || continue
+			path="$(echo "${line}" | awk '{print $1}')"
+			echo "${paths}" | grep -qF "${path}" || mm_monitor_cache_remove "${path}"
+		done <<EOF
+${cache_snapshot}
+EOF
+	fi
+
+	# add missing entries (present in MM but not cached)
+	for path in ${paths}; do
+		grep -qsF "^${path} " "${MODEMMANAGER_MONITOR_CACHE}" 2>/dev/null || \
+			mm_monitor_cache_add "${path}"
+	done
 }
 
 main() {
@@ -139,18 +181,36 @@ main() {
 		return
 	}
 
-	sh -c "echo \$\$; exec /usr/bin/mmcli -M" | {
-		read -r monitor_pid
-		trap_with_arg func_trap "$monitor_pid" SIGINT SIGTERM SIGKILL
-		local line
-		while read -r line; do
-			mm_log "debug" "Monitor cache line: ${line}"
-			mm_monitor_cache "$line"
-		done
-	} &
-	child="$!"
-	trap_with_arg func_trap "$child" SIGINT SIGTERM SIGKILL
-	wait $child
+	# before the listener pipeline exists, just flag the stop request
+	trap 'MONITOR_STOPPING=1' SIGINT SIGTERM
+
+	# Listener loop: if the mmcli -M listener dies on its own (e.g. D-Bus
+	# hiccup or ModemManager restart), reconnect after a short delay instead
+	# of exiting. Exiting would make procd respawn us, and every respawn
+	# cycle used to tear down the availability of all modem interfaces.
+	while [ "${MONITOR_STOPPING}" = "0" ]; do
+		sh -c "echo \$\$; exec /usr/bin/mmcli -M" | {
+			read -r monitor_pid
+			while read -r line; do
+				[ "${MONITOR_STOPPING}" = "0" ] || break
+				mm_log "debug" "Monitor cache line: ${line}"
+				mm_monitor_cache "$line"
+			done
+		} &
+		child="$!"
+		MONITOR_CHILD="$child"
+		trap_with_arg func_trap "$child" SIGINT SIGTERM
+		wait "$child"
+		MONITOR_CHILD=""
+
+		[ "${MONITOR_STOPPING}" = "0" ] || break
+
+		mm_log "info" "mmcli -M listener exited, reconciling and reconnecting in 5s"
+		mm_monitor_reconcile
+		sleep 5
+	done
+
+	mm_log "info" "monitor stopped"
 }
 
 main "$@"

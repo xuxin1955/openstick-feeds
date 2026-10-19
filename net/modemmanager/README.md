@@ -49,6 +49,38 @@ The 'force_connection' option is designed to ensure that the modem automatically
 attempts to reconnect regardless of any errors encountered during the
 connection process.
 
+The 'timeout' option sets the command timeout (in seconds) for the long running
+'mmcli' calls ('enable', '3gpp-register-in-operator' and 'simple-connect') in
+the modemmanager protohandler. The default value is 120 seconds, if no value
+is configured.
+
+The 'autoconnect' option controls whether the protohandler starts the data
+connection after network registration. It defaults to 1. When set to '0', the
+setup finishes right after the modem has registered on the network
+(registration state 'home' or 'roaming') without dialing the APN - useful when
+the connection itself is managed externally. Note that the interface will be
+up but without any IP configuration in this mode.
+
+Network registration is performed in silent mode: if the registration command
+fails, the protohandler does not abort but polls the modem's registration state
+(modem.3gpp.registration-state) for up to 180 seconds, every 5 seconds, and
+proceeds as soon as the modem reports 'home' or 'roaming'. This makes the
+handler tolerant to modems that need a long time to register.
+
+Additionally, this package ships two helpers on top of the plain ModemManager
+daemon:
+
+* ModemManager-wrapper starts the daemon and replays cached kernel events
+  (uevents seen before the daemon was ready) so that no port is missed on
+  slow-booting systems.
+* ModemManager-monitor listens for modem add/remove events (mmcli -M) and
+  reports the availability of the underlying device to netifd
+  (proto_set_available), so that interfaces configured with this proto are
+  brought down automatically when the modem disappears and brought back up
+  when it reappears. If the listener dies, it reconnects automatically and
+  reconciles its state with the list of modems currently known to
+  ModemManager.
+
 If there is no Circuit switch network available, then an initial EPS
 bearer must be set, so this could be used during the network registration
 process in 4G and 5G network. For this resaon a new configuration option
