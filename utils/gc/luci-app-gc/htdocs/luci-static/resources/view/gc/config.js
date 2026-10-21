@@ -42,28 +42,37 @@ return view.extend({
 		o.rmempty = false;
 		o.description = _('启用 USB Gadget 管理。仅在设备模式下生效。');
 
+		o = s.option(form.Flag, 'diag', _('Qualcomm 诊断'));
+		o.rmempty = false;
+		o.description = _('启用 QPST/QXDM 诊断，功能待验证。');
+
 		o = s.option(form.Flag, 'adb', _('ADB 调试'));
 		o.rmempty = false;
 		o.description = _('启用 ADB 调试功能。设备上需存在 /etc/init.d/adbd。');
 
 		o = s.option(form.Flag, 'rndis', _('RNDIS 网络'));
+		o.depends('diag', '0');
 		o.rmempty = false;
 		o.description = _('启用 RNDIS USB 网络接口。');
 
 		o = s.option(form.Flag, 'ecm', _('ECM 网络'));
+		o.depends('diag', '0');
 		o.rmempty = false;
 		o.description = _('启用 ECM USB 网络接口。');
 
 		o = s.option(form.Flag, 'ncm', _('NCM 网络'));
+		o.depends('diag', '0');
 		o.rmempty = false;
 		o.description = _('启用 NCM USB 网络接口。');
 
 		o = s.option(form.Flag, 'mass', _('大容量存储'));
+		o.depends('diag', '0');
 		o.rmempty = false;
 		o.description = _('启用 USB 大容量存储功能。');
 
 		o = s.option(form.Value, 'mass_path', _('存储后端路径'));
 		o.depends('mass', '1');
+		o.depends('diag', '0');
 		o.placeholder = '/';
 		o.description = _('填写用于大容量存储的后端文件或块设备绝对路径。');
 		o.validate = function(section_id, value) {
@@ -82,22 +91,27 @@ return view.extend({
 		};
 
 		o = s.option(form.Flag, 'serial', _('串行接口'));
+		o.depends('diag', '0');
 		o.rmempty = false;
 		o.description = _('启用 USB 串行接口功能。');
 
 		o = s.option(form.Flag, 'hid', _('HID 设备'));
+		o.depends('diag', '0');
 		o.rmempty = false;
 		o.description = _('启用 USB HID 人机接口设备功能。');
 
 		o = s.option(form.Flag, 'acm', _('ACM 串口'));
+		o.depends('diag', '0');
 		o.rmempty = false;
 		o.description = _('启用 USB ACM 串口功能。');
 
 		o = s.option(form.Flag, 'printer', _('打印机'));
+		o.depends('diag', '0');
 		o.rmempty = false;
 		o.description = _('启用 USB 打印机功能。');
 
 		o = s.option(form.Flag, 'midi', _('MIDI 设备'));
+		o.depends('diag', '0');
 		o.rmempty = false;
 		o.description = _('启用 USB MIDI 设备功能。');
 

@@ -1,0 +1,88 @@
+diff --git a/gc_ffs.c b/gc_ffs.c
+index db9bdd2..395aa26 100644
+--- a/gc_ffs.c
++++ b/gc_ffs.c
+@@ -41,7 +41,8 @@ int gc_ffs_create(int argc,char *argv[],gc_generic_info info)
+     usbg_config *config = gc_get_config(gadget);
+     char bind_name[USBG_MAX_NAME_LENGTH];
+ 
+-    snprintf(bind_name, sizeof(bind_name), "1.%s", id);
++    snprintf(bind_name, sizeof(bind_name),
++             getenv("GC_ADB_FIRST") ? "0.%s" : "z.%s", id);
+     usbg_ret = usbg_add_config_function(config,bind_name,f_ffs);
+     if(usbg_ret != USBG_SUCCESS){
+         fprintf(stderr,"failed to bind ffs config to function! \n");
+diff --git a/gc_generic.c b/gc_generic.c
+index 55e586e..a2c287e 100644
+--- a/gc_generic.c
++++ b/gc_generic.c
+@@ -123,12 +123,69 @@ int gc_remove_all_gadgets(gc_generic_info info)
+     return GC_SUCCESS;
+ }
+ 
++static int gc_pick_id_product(usbg_gadget *g)
++{
++    usbg_function *f;
++    int adb = 0, rndis = 0, other = 0;
++
++    if (g == NULL)
++        return -1;
++
++    for (f = usbg_get_first_function(g); f != NULL;
++         f = usbg_get_next_function(f)) {
++        switch (usbg_get_function_type(f)) {
++        case USBG_F_FFS:
++            adb++;
++            break;
++        case USBG_F_RNDIS:
++            rndis++;
++            break;
++        default:
++            other++;
++            break;
++        }
++    }
++
++    if (adb != 1)
++        return -1;
++
++    if (rndis == 1 && other == 0)
++        return 0x4EE4;
++
++    if (rndis == 0 && other == 0)
++        return 0x4EE7;
++
++    return -1;
++}
++
+ int gc_enable_gadget(gc_generic_info info)
+ {
+     if(gc_init(info) == NULL)
+         return GC_FAILED;
+     usbg_gadget *g;
+     g = usbg_get_first_gadget(state);
++    if(g == NULL) {
++        gc_clean();
++        return GC_FAILED;
++    }
++
++    int pid = gc_pick_id_product(g);
++    const char *env_vid = getenv("GC_ID_VENDOR");
++    const char *env_pid = getenv("GC_ID_PRODUCT");
++
++    if(pid > 0 || env_vid || env_pid) {
++        struct usbg_gadget_attrs attrs;
++        if(usbg_get_gadget_attrs(g, &attrs) == USBG_SUCCESS) {
++            if(env_vid)
++                attrs.idVendor = strtoul(env_vid, NULL, 16);
++            if(env_pid)
++                attrs.idProduct = strtoul(env_pid, NULL, 16);
++            else if(pid > 0)
++                attrs.idProduct = pid;
++            usbg_set_gadget_attrs(g, &attrs);
++        }
++    }
++
+     if(usbg_enable_gadget(g, DEFAULT_UDC) != USBG_SUCCESS){
+         fprintf(stderr,"failed to enable gadget! \n");
+         gc_clean();

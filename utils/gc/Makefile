@@ -15,7 +15,7 @@ PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/lkiuyu/gc.git
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.xz
 PKG_SOURCE_VERSION:=1e2b4d9480cf75663212a2bb7c550f3aae07ef50
-PKG_MIRROR_HASH:=5daf9d3b11e27695ce92bf6405e94fb798322ad539b0e23bfe54f9c056358654
+PKG_MIRROR_HASH:=skip
 
 PKG_INSTALL:=1
 PKG_BUILD_PARALLEL:=1
@@ -57,6 +57,9 @@ define Package/gc/install
 
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/gc $(1)/usr/bin/
+	$(INSTALL_BIN) ./files/diag-router $(1)/usr/bin/diag-router
+	$(INSTALL_BIN) ./files/rpmsgexport $(1)/usr/bin/rpmsgexport
+	$(INSTALL_BIN) ./files/send_data $(1)/usr/bin/send_data
 endef
 
 define Package/luci-app-gc/install

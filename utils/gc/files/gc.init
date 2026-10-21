@@ -9,6 +9,9 @@ PROG=/usr/bin/gc
 CONFIGFS=/sys/kernel/config
 ADBD_INIT=/etc/init.d/adbd
 ADB_FFS=/dev/usb-ffs/adb
+DIAG_FFS=/dev/ffs-diag
+DIAG_LOG=/tmp/diag.log
+DIAG_GADGET=$CONFIGFS/usb_gadget/g2
 ROLE_PATH=/sys/class/udc/ci_hdrc.0/device/driver/ci_hdrc.0/role
 
 get_config() {
@@ -60,17 +63,107 @@ start_adbd() {
 }
 
 stop_adbd() {
-	if [ -e "$ADBD_INIT" ]; then
-		"$ADBD_INIT" stop
+	ubus call service delete '{"name":"adbd"}' 2>/dev/null
+	sleep 1
+
+	if pidof adbd >/dev/null 2>&1; then
+		kill -9 $(pidof adbd) 2>/dev/null
+		sleep 1
 	fi
 
 	if grep -qs " $ADB_FFS " /proc/mounts; then
-		umount "$ADB_FFS"
+		umount "$ADB_FFS" 2>/dev/null
 	fi
 }
 
+diag_ctrl() {
+	local n link
+
+	for n in 0 1 2 3; do
+		[ -e /dev/rpmsg_ctrl$n ] || continue
+		link=$(readlink /sys/class/rpmsg/rpmsg_ctrl$n/device 2>/dev/null)
+		case "$link" in
+			*remoteproc0:smd-edge*)
+				echo /dev/rpmsg_ctrl$n
+				return 0
+				;;
+		esac
+	done
+
+	echo /dev/rpmsg_ctrl0
+}
+
+start_diag() {
+	local ctrl udc i=0
+
+	while [ $i -lt 20 ]; do
+		ls /sys/bus/rpmsg/devices/ 2>/dev/null | grep -q "smd-edge.DIAG.-1.-1" && break
+		i=$((i + 1))
+		sleep 1
+	done
+
+	ensure_configfs || return 1
+
+	stop_adbd
+	gc -c 2>/dev/null
+
+	ctrl=$(diag_ctrl)
+	rpmsgexport "$ctrl" DIAG 2>/dev/null
+	rpmsgexport "$ctrl" DIAG_CNTL 2>/dev/null
+	rpmsgexport "$ctrl" DIAG_CMD 2>/dev/null
+
+	mkdir -p "$DIAG_GADGET/strings/0x409" "$DIAG_GADGET/configs/c.1/strings/0x409" \
+		"$DIAG_GADGET/functions/ffs.diag"
+	echo 0x05c6 > "$DIAG_GADGET/idVendor"
+	echo 0x901D > "$DIAG_GADGET/idProduct"
+	echo 0x0200 > "$DIAG_GADGET/bcdUSB"
+	echo 0x00 > "$DIAG_GADGET/bDeviceClass"
+	echo 0x00 > "$DIAG_GADGET/bDeviceSubClass"
+	echo 0x00 > "$DIAG_GADGET/bDeviceProtocol"
+	echo 0x40 > "$DIAG_GADGET/bMaxPacketSize0"
+	echo 0x0100 > "$DIAG_GADGET/bcdDevice"
+	echo 0123456789 > "$DIAG_GADGET/strings/0x409/serialnumber"
+	echo Qualcomm > "$DIAG_GADGET/strings/0x409/manufacturer"
+	echo Android > "$DIAG_GADGET/strings/0x409/product"
+	echo diag > "$DIAG_GADGET/configs/c.1/strings/0x409/configuration"
+	ln -s "$DIAG_GADGET/functions/ffs.diag" "$DIAG_GADGET/configs/c.1/1.diag" 2>/dev/null
+
+	if [ "$(get_config adb 0)" -eq 1 ]; then
+		mkdir -p "$DIAG_GADGET/functions/ffs.adb"
+		ln -s "$DIAG_GADGET/functions/ffs.adb" "$DIAG_GADGET/configs/c.1/2.adb" 2>/dev/null
+	fi
+
+	mkdir -p "$DIAG_FFS"
+	mount -t functionfs diag "$DIAG_FFS" || return 1
+
+	if [ "$(get_config adb 0)" -eq 1 ]; then
+		mkdir -p "$ADB_FFS"
+		mount -t functionfs adb "$ADB_FFS" 2>/dev/null
+	fi
+
+	/usr/bin/diag-router > "$DIAG_LOG" 2>&1 &
+	sleep 1
+
+	if [ "$(get_config adb 0)" -eq 1 ]; then
+		[ -e "$ADBD_INIT" ] && "$ADBD_INIT" start
+		sleep 1
+	fi
+
+	udc=$(ls /sys/class/udc 2>/dev/null | head -n 1)
+	[ -n "$udc" ] || return 1
+	echo "$udc" > "$DIAG_GADGET/UDC" || return 1
+
+	return 0
+}
+
+stop_diag() {
+	echo "" > "$DIAG_GADGET/UDC" 2>/dev/null
+	kill -9 $(pidof diag-router) 2>/dev/null
+	umount "$DIAG_FFS" 2>/dev/null
+}
+
 configure_gadget() {
-	local rndis mass mass_path serial hid ecm ncm acm printer midi
+	local rndis mass mass_path serial hid ecm ncm acm printer midi diag
 
 	rndis=$(get_config rndis 0)
 	mass=$(get_config mass 0)
@@ -82,8 +175,14 @@ configure_gadget() {
 	acm=$(get_config acm 0)
 	printer=$(get_config printer 0)
 	midi=$(get_config midi 0)
+	diag=$(get_config diag 0)
 
 	ensure_configfs || return 1
+
+	if [ "$diag" -eq 1 ]; then
+		start_diag || return 1
+		return 0
+	fi
 
 	gc -c
 	if [ "$ecm" -eq 1 ]; then
@@ -148,8 +247,9 @@ start_service() {
 }
 
 stop_service() {
+	stop_diag
 	stop_adbd
-	gc -d
+	timeout 8 gc -d
 	gc -c
 }
 

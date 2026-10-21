@@ -1,0 +1,32 @@
+diff --git a/gc_config.h.in b/gc_config.h.in
+index 02b28ef..77a49e3 100644
+--- a/gc_config.h.in
++++ b/gc_config.h.in
+@@ -21,15 +21,15 @@
+ #cmakedefine ID_PRODUCT @ID_PRODUCT@
+ 
+ #ifndef SERIAL_NUMBER
+-#define SERIAL_NUMBER "0123456789"
++#define SERIAL_NUMBER "0123456789ABCDEF"
+ #endif
+ 
+ #ifndef MANUFACTURER
+-#define MANUFACTURER "HandsomeTech"
++#define MANUFACTURER "Google"
+ #endif
+ 
+ #ifndef PRODUCT
+-#define PRODUCT "HandsomeMod Device"
++#define PRODUCT "Android"
+ #endif
+ 
+ #ifndef ID_VENDOR
+@@ -37,7 +37,7 @@
+ #endif
+ 
+ #ifndef ID_PRODUCT
+-#define ID_PRODUCT "0xd001"
++#define ID_PRODUCT "0x4ee7"
+ #endif
+ 
+ #endif //GC_CONFIG_H
