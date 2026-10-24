@@ -1,5 +1,4 @@
 #!/bin/sh /etc/rc.common
-# Copyright (C) 2020-2022 HandsomeMod Project
 
 START=90
 STOP=30
@@ -12,6 +11,7 @@ ADB_FFS=/dev/usb-ffs/adb
 DIAG_FFS=/dev/ffs-diag
 DIAG_LOG=/tmp/diag.log
 DIAG_GADGET=$CONFIGFS/usb_gadget/g2
+ADB_GADGET=$CONFIGFS/usb_gadget/g1
 ROLE_PATH=/sys/class/udc/ci_hdrc.0/device/driver/ci_hdrc.0/role
 
 get_config() {
@@ -76,6 +76,20 @@ stop_adbd() {
 	fi
 }
 
+ensure_rpmsg_nodes() {
+	local n d maj min
+
+	for n in 0 1 2 3 4 5; do
+		d=/sys/class/rpmsg/rpmsg$n
+		[ -e $d ] || continue
+		[ -c /dev/rpmsg$n ] && continue
+		rm -f /dev/rpmsg$n
+		maj=$(grep MAJOR $d/uevent | cut -d= -f2)
+		min=$(grep MINOR $d/uevent | cut -d= -f2)
+		[ -n "$maj" ] && [ -n "$min" ] && mknod /dev/rpmsg$n c $maj $min
+	done
+}
+
 diag_ctrl() {
 	local n link
 
@@ -111,6 +125,8 @@ start_diag() {
 	rpmsgexport "$ctrl" DIAG 2>/dev/null
 	rpmsgexport "$ctrl" DIAG_CNTL 2>/dev/null
 	rpmsgexport "$ctrl" DIAG_CMD 2>/dev/null
+
+	ensure_rpmsg_nodes
 
 	mkdir -p "$DIAG_GADGET/strings/0x409" "$DIAG_GADGET/configs/c.1/strings/0x409" \
 		"$DIAG_GADGET/functions/ffs.diag"
@@ -160,6 +176,62 @@ stop_diag() {
 	echo "" > "$DIAG_GADGET/UDC" 2>/dev/null
 	kill -9 $(pidof diag-router) 2>/dev/null
 	umount "$DIAG_FFS" 2>/dev/null
+}
+
+wait_ffs_ready() {
+	local dir="$1" tag="$2" i=0
+
+	while [ $i -lt 10 ] && [ ! -e "$dir/ep1" ]; do
+		i=$((i + 1))
+		sleep 1
+	done
+	if [ ! -e "$dir/ep1" ]; then
+		logger -t gc "$tag: ffs endpoints not ready"
+		return 1
+	fi
+	return 0
+}
+
+start_adb_gadget() {
+	local udc
+
+	ensure_configfs || return 1
+	stop_adbd
+	stop_diag
+	gc -c 2>/dev/null
+
+	mkdir -p "$ADB_GADGET/strings/0x409" "$ADB_GADGET/configs/c.1/strings/0x409" \
+		"$ADB_GADGET/functions/ffs.adb"
+	echo 0x18d1 > "$ADB_GADGET/idVendor"
+	echo 0x4ee7 > "$ADB_GADGET/idProduct"
+	echo 0x0200 > "$ADB_GADGET/bcdUSB"
+	echo 0x00 > "$ADB_GADGET/bDeviceClass"
+	echo 0x00 > "$ADB_GADGET/bDeviceSubClass"
+	echo 0x00 > "$ADB_GADGET/bDeviceProtocol"
+	echo 0x40 > "$ADB_GADGET/bMaxPacketSize0"
+	echo 0x0100 > "$ADB_GADGET/bcdDevice"
+	echo 0123456789 > "$ADB_GADGET/strings/0x409/serialnumber"
+	echo Google > "$ADB_GADGET/strings/0x409/manufacturer"
+	echo Android > "$ADB_GADGET/strings/0x409/product"
+	echo adb > "$ADB_GADGET/configs/c.1/strings/0x409/configuration"
+	rm -f "$ADB_GADGET/configs/c.1/1.adb" 2>/dev/null
+	ln -s "$ADB_GADGET/functions/ffs.adb" "$ADB_GADGET/configs/c.1/1.adb" 2>/dev/null
+	[ -L "$ADB_GADGET/configs/c.1/1.adb" ] || { logger -t gc "ln -s 1.adb failed"; return 1; }
+
+	mkdir -p "$ADB_FFS"
+	grep -qs " $ADB_FFS " /proc/mounts || mount -t functionfs adb "$ADB_FFS" || { logger -t gc "mount $ADB_FFS failed"; return 1; }
+
+	kill -9 $(pidof adbd) 2>/dev/null
+	sleep 1
+	[ -e "$ADBD_INIT" ] && "$ADBD_INIT" start
+	wait_ffs_ready "$ADB_FFS" adbd || return 1
+
+	udc=$(ls /sys/class/udc 2>/dev/null | head -n 1)
+	[ -n "$udc" ] || { logger -t gc "no udc found"; return 1; }
+	echo "$udc" > "$ADB_GADGET/UDC" || { logger -t gc "bind udc failed"; return 1; }
+	logger -t gc "adb gadget up: udc=$udc"
+
+	return 0
 }
 
 configure_gadget() {
@@ -212,6 +284,11 @@ configure_gadget() {
 	if [ "$mass" -eq 1 ]; then
 		gc -a mass "$mass_path"
 	fi
+	if [ "$(get_config adb 0)" -eq 1 ] && [ "$rndis$mass$serial$hid$ecm$ncm$acm$printer$midi" = "000000000" ]; then
+		start_adb_gadget || return 1
+		return 0
+	fi
+
 	if [ "$(get_config adb 0)" -eq 1 ]; then
 		gc -a ffs
 		start_adbd || return 1
@@ -244,6 +321,7 @@ start_service() {
 			apply_gadget_mode
 			;;
 	esac
+
 }
 
 stop_service() {
@@ -251,6 +329,7 @@ stop_service() {
 	stop_adbd
 	timeout 8 gc -d
 	gc -c
+
 }
 
 restart() {
