@@ -1,0 +1,260 @@
+#!/bin/sh
+
+STATE=/etc/simadmin-nm
+mkdir -p "$STATE"
+
+TERSE=0
+FIELDS=""
+WAIT=0
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-t|--terse)
+			TERSE=1
+			shift
+			;;
+		-p|--pretty)
+			shift
+			;;
+		-f|--fields|--get-values)
+			FIELDS="$2"
+			shift 2
+			;;
+		-w|--wait)
+			WAIT="$2"
+			shift 2
+			;;
+		-c|--colors)
+			shift 2
+			;;
+		--complete-args|-a|--ask|--show-secrets|-e|--escape|--mode)
+			shift 2
+			;;
+		*)
+			break
+			;;
+	esac
+done
+
+modem_id() {
+	mmcli -L 2>/dev/null | sed -n 's|.*/Modem/\([0-9][0-9]*\).*|\1|p' | head -1
+}
+
+pget() {
+	sed -n "s|^$2=||p" "$1" 2>/dev/null | head -1
+}
+
+pset() {
+	grep -q "^$2=" "$1" 2>/dev/null && sed -i "s|^$2=.*|$2=$3|" "$1" || echo "$2=$3" >> "$1"
+}
+
+pfile() {
+	echo "$STATE/$1.profile"
+}
+
+exists() {
+	[ -f "$(pfile "$1")" ]
+}
+
+modem_connected() {
+	id=$(modem_id)
+	[ -n "$id" ] || return 1
+	mmcli -m "$id" 2>/dev/null | grep -q "state: connected"
+}
+
+list_profiles() {
+	for f in "$STATE"/*.profile; do
+		[ -f "$f" ] || continue
+		n=$(basename "$f" .profile)
+		auto=$(pget "$f" autoconnect)
+		[ -n "$auto" ] || auto=yes
+		dev=wwan0
+		if echo "$FIELDS" | grep -q "AUTOCONNECT"; then
+			echo "$n:$(pget "$f" uuid):gsm:$dev:$auto"
+		else
+			echo "$n:gsm"
+		fi
+	done
+}
+
+show_profile() {
+	f=$(pfile "$1")
+	[ -f "$f" ] || exit 10
+	case "$FIELDS" in
+		*GENERAL.STATE*)
+			if [ "$(pget "$f" active)" = "yes" ] && modem_connected; then
+				echo "activated"
+			else
+				echo "disconnected"
+			fi
+			echo "wwan0"
+			echo "wwan0"
+			;;
+		*802-11-wireless.ssid*)
+			exit 0
+			;;
+		*IP4.ADDRESS*)
+			id=$(modem_id)
+			[ -n "$id" ] && mmcli -m "$id" --command="AT+CGCONTRDP" 2>/dev/null | head -2
+			;;
+		*)
+			pget "$f" apn
+			;;
+	esac
+}
+
+create_profile() {
+	name=""
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			con-name|name)
+				name="$2"
+				shift 2
+				;;
+			*)
+				shift
+				;;
+		esac
+	done
+	[ -n "$name" ] || name=simadmin-modem
+	f=$(pfile "$name")
+	: > "$f"
+	pset "$f" name "$name"
+	pset "$f" type gsm
+	pset "$f" uuid "$(cat /proc/sys/kernel/random/uuid 2>/dev/null)"
+	pset "$f" apn ""
+	pset "$f" username ""
+	pset "$f" password ""
+	pset "$f" homeonly yes
+	pset "$f" autoconnect no
+	pset "$f" active no
+	echo "Connection '$name' added"
+}
+
+modify_profile() {
+	name="$1"
+	shift
+	f=$(pfile "$name")
+	[ -f "$f" ] || exit 10
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			gsm.apn)
+				pset "$f" apn "$2"
+				shift 2
+				;;
+			gsm.username)
+				pset "$f" username "$2"
+				shift 2
+				;;
+			gsm.password)
+				pset "$f" password "$2"
+				shift 2
+				;;
+			gsm.home-only)
+				pset "$f" homeonly "$2"
+				shift 2
+				;;
+			connection.autoconnect)
+				pset "$f" autoconnect "$2"
+				shift 2
+				;;
+			ipv4.route-metric|ipv6.route-metric|gsm.auto-config|ifname)
+				shift 2
+				;;
+			*)
+				shift
+				;;
+		esac
+	done
+}
+
+activate_profile() {
+	name="$1"
+	f=$(pfile "$name")
+	[ -f "$f" ] || exit 10
+	id=$(modem_id)
+	[ -n "$id" ] || exit 10
+	apn=$(pget "$f" apn)
+	[ -n "$apn" ] || apn=ctnet
+	user=$(pget "$f" username)
+	pass=$(pget "$f" password)
+	opts="apn=$apn,ip-type=ipv4v6"
+	[ -n "$user" ] && opts="$opts,user=$user"
+	[ -n "$pass" ] && opts="$opts,password=$pass"
+	mmcli -m "$id" --simple-connect="$opts" >/dev/null 2>&1 || exit 4
+	pset "$f" active yes
+	echo "Connection '$name' successfully activated"
+}
+
+deactivate_profile() {
+	name="$1"
+	f=$(pfile "$name")
+	[ -f "$f" ] || exit 10
+	id=$(modem_id)
+	[ -n "$id" ] && mmcli -m "$id" --simple-disconnect >/dev/null 2>&1
+	pset "$f" active no
+	echo "Connection '$name' successfully deactivated"
+}
+
+OBJ="$1"
+SUB="$2"
+
+case "$OBJ" in
+	connection)
+		case "$SUB" in
+			show)
+				if [ -n "$3" ]; then
+					show_profile "$3"
+				else
+					list_profiles
+				fi
+				;;
+			add)
+				shift 2
+				create_profile "$@"
+				;;
+			modify)
+				shift 2
+				modify_profile "$@"
+				;;
+			up)
+				activate_profile "$3"
+				;;
+			down)
+				deactivate_profile "$3"
+				;;
+			delete)
+				rm -f "$(pfile "$3")"
+				;;
+			*)
+				exit 0
+				;;
+		esac
+		;;
+	device)
+		case "$SUB" in
+			status)
+				echo "wwan0:gsm:connected:simadmin-modem"
+				;;
+			show)
+				id=$(modem_id)
+				[ -n "$id" ] && mmcli -m "$id" | sed -n 's|^.*state: |GENERAL.STATE: |p'
+				;;
+			disconnect|connect|wifi)
+				exit 0
+				;;
+			*)
+				exit 0
+				;;
+		esac
+		;;
+	general)
+		echo "disabled:disabled"
+		;;
+	radio)
+		exit 0
+		;;
+	*)
+		exit 0
+		;;
+esac

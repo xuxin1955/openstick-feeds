@@ -1,0 +1,165 @@
+#!/bin/sh
+
+QUIET=0
+VERB=""
+UNIT=""
+
+for a in "$@"; do
+	case "$a" in
+		--quiet|-q)
+			QUIET=1
+			;;
+		-*)
+			;;
+		*)
+			if [ -z "$VERB" ]; then
+				VERB="$a"
+			else
+				UNIT="$a"
+			fi
+			;;
+	esac
+done
+
+svc=""
+known=0
+
+case "$UNIT" in
+	ModemManager|ModemManager.service)
+		svc=modemmanager
+		known=1
+		;;
+	NetworkManager|NetworkManager.service)
+		svc=""
+		known=1
+		;;
+	dbus|dbus.service)
+		svc=dbus
+		known=1
+		;;
+	simadmin-watchdog|simadmin-watchdog.service)
+		svc=simadmin-watchdog
+		known=1
+		;;
+	simadmin|simadmin.service)
+		svc=simadmin
+		known=1
+		;;
+esac
+
+proc_running() {
+	for d in /proc/[0-9]*; do
+		c=$(cat "$d/comm" 2>/dev/null) || continue
+		[ "$c" = "$1" ] && return 0
+	done
+	return 1
+}
+
+is_active() {
+	case "$svc" in
+		modemmanager)
+			proc_running ModemManager && return 0
+			return 3
+			;;
+		dbus)
+			proc_running dbus-daemon && return 0
+			return 3
+			;;
+		simadmin)
+			proc_running simadmin && return 0
+			return 3
+			;;
+		simadmin-watchdog)
+			proc_running simadmin-watchd && return 0
+			return 3
+			;;
+		"")
+			return 3
+			;;
+	esac
+	return 3
+}
+
+report_active() {
+	rc=$1
+	if [ "$QUIET" = "0" ]; then
+		if [ "$rc" = "0" ]; then
+			echo active
+		else
+			echo inactive
+		fi
+	fi
+	exit "$rc"
+}
+
+case "$VERB" in
+	is-active)
+		is_active
+		report_active $?
+		;;
+	status)
+		if is_active; then
+			[ "$QUIET" = "0" ] && echo "active (running)"
+			exit 0
+		fi
+		[ "$QUIET" = "0" ] && echo "inactive (dead)"
+		exit 3
+		;;
+	is-enabled)
+		if [ "$known" = "1" ] && [ -n "$svc" ]; then
+			[ "$QUIET" = "0" ] && echo enabled
+			exit 0
+		fi
+		[ "$QUIET" = "0" ] && echo disabled
+		exit 1
+		;;
+	start|stop|restart|reload|try-restart|condrestart|force-reload)
+		if [ "$known" = "1" ] && [ -z "$svc" ]; then
+			exit 0
+		fi
+		if [ -z "$svc" ] || [ ! -x "/etc/init.d/$svc" ]; then
+			[ "$VERB" = "start" ] || [ "$VERB" = "restart" ] && exit 0
+			exit 0
+		fi
+		case "$VERB" in
+			restart|try-restart|condrestart)
+				/etc/init.d/"$svc" restart >/dev/null 2>&1
+				sleep 2
+				;;
+			start)
+				/etc/init.d/"$svc" start >/dev/null 2>&1
+				sleep 1
+				;;
+			stop)
+				/etc/init.d/"$svc" stop >/dev/null 2>&1
+				sleep 1
+				;;
+			*)
+				/etc/init.d/"$svc" reload >/dev/null 2>&1
+				;;
+		esac
+		exit 0
+		;;
+	enable|disable|reenable|preset)
+		if [ "$known" = "1" ] && [ -n "$svc" ] && [ -x "/etc/init.d/$svc" ]; then
+			if [ "$VERB" = "disable" ]; then
+				/etc/init.d/"$svc" disable >/dev/null 2>&1
+			else
+				/etc/init.d/"$svc" enable >/dev/null 2>&1
+			fi
+		fi
+		exit 0
+		;;
+	daemon-reload|daemon-reexec|reset-failed|mask|unmask)
+		exit 0
+		;;
+	list-units|list-unit-files|show|cat)
+		exit 0
+		;;
+	"")
+		exit 0
+		;;
+	*)
+		exit 0
+		;;
+esac

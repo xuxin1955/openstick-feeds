@@ -1,0 +1,46 @@
+#!/bin/sh
+
+LOG=/var/log/simadmin-watchdog.log
+DRV=/sys/bus/platform/drivers/qcom-q6v5-mss
+INTERVAL=30
+LIMIT=20
+STATE=/sys/class/remoteproc/remoteproc0/state
+
+log() {
+	echo "$(date '+%Y-%m-%d %H:%M:%S') $1" >> "$LOG"
+}
+
+modem_ok() {
+	mmcli -L 2>/dev/null | grep -q '/Modem/'
+}
+
+rebind() {
+	[ "$(cat "$STATE" 2>/dev/null)" = "offline" ] || return 1
+	dev=$(basename "$(ls -d "$DRV"/*.remoteproc 2>/dev/null | head -1)")
+	[ -n "$dev" ] || return 1
+	[ "$dev" = "." ] && return 1
+	log "rebind $dev"
+	echo "$dev" > "$DRV/unbind" 2>/dev/null
+	sleep 2
+	echo "$dev" > "$DRV/bind" 2>/dev/null
+	sleep 20
+	modem_ok
+}
+
+fail=0
+
+while true; do
+	if modem_ok; then
+		if [ "$fail" -gt 0 ]; then
+			log "modem back"
+		fi
+		fail=0
+	else
+		fail=$((fail + 1))
+		if [ "$fail" -ge "$LIMIT" ]; then
+			rebind || log "rebind failed"
+			fail=0
+		fi
+	fi
+	sleep "$INTERVAL"
+done

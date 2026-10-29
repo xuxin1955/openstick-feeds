@@ -1,0 +1,146 @@
+{
+  "hub": {
+    "enabled": false,
+    "url": "",
+    "local_fallback_timeout_seconds": 120,
+    "local_fallback_enabled": true
+  },
+  "webhook": {
+    "enabled": false,
+    "url": "",
+    "http_method": "POST",
+    "forward_sms": true,
+    "forward_calls": true,
+    "forward_ddns": true,
+    "forward_updates": true,
+    "headers": {},
+    "secret": "",
+    "sms_template": "{\n  \"msg_type\": \"text\",\n  \"content\": {\n    \"text\": \"📱 短信通知\\n号码: {{phone_number}}\\n内容: {{content}}\\n时间: {{timestamp}}\\n来源: {{own_number}}\"\n  }\n}",
+    "call_template": "{\n  \"msg_type\": \"text\",\n  \"content\": {\n    \"text\": \"📞 来电 通知\\n号码: {{phone_number}}\\n类型: {{direction}}\\n时间: {{start_time}}\\n时长: {{duration}}秒\\n已接听: {{answered}}\"\n  }\n}",
+    "ddns_template": "{\n  \"msg_type\": \"text\",\n  \"content\": {\n    \"text\": \"SimAdmin DDNS 通知\\n域名: {{domains}}\\nIP类型: {{ip_type}}\\n新IP: {{new_ip}}\\n旧IP: {{old_ip}}\\n 服务商: {{provider}}\\n记录类型: {{record_type}}\\n状态: {{status}}\\n消息: {{message}}\\n更新时间: {{timestamp}}\"\n  }\n}",
+    "update_template": "{\n  \"msg_type\": \"text\",\n  \"content\": {\n    \"text\": \"🚀 SimAdmin 发现新版本\\n固件包: {{asset_name}}\\n版本号: {{version}}\\n时间: {{time}}\\n来源: {{own_number}}\\n\\n请前往 OTA 在线更新模块检测版本，一键下载并升级。\"\n  }\n}"
+  },
+  "notifications": {
+    "version": 2,
+    "channels": [],
+    "rules": [],
+    "log_cleanup": {
+      "retention_days_enabled": true,
+      "retention_days": 90,
+      "max_entries_enabled": true,
+      "max_entries": 10000
+    }
+  },
+  "device_network": {
+    "ddns": {
+      "enabled": false,
+      "provider": "tencentcloud",
+      "access_id": "",
+      "access_secret": "",
+      "interval_seconds": 300,
+      "ttl": 600,
+      "ipv4": {
+        "enabled": true,
+        "get_type": "interface",
+        "interface_name": "",
+        "urls": [
+          "https://api.ipify.org",
+          "https://ip.3322.net",
+          "https://4.ident.me",
+          "https://ddns.oray.com/checkip",
+          "https://4.ipw.cn"
+        ],
+        "domains": []
+      },
+      "ipv6": {
+        "enabled": false,
+        "get_type": "interface",
+        "interface_name": "",
+        "urls": [
+          "https://api6.ipify.org",
+          "https://speed.neu6.edu.cn/getIP.php",
+          "https://v6.ident.me",
+          "https://myip6.ipip.net",
+          "https://6.ipw.cn"
+        ],
+        "domains": []
+      }
+    }
+  },
+  "version_update_notifications": {
+    "enabled": false,
+    "proxy_prefix": "",
+    "last_notified_version": null
+  },
+  "security": {
+    "password_protection_enabled": false,
+    "password_min_length": 8,
+    "password_require_letters": true,
+    "password_require_digits": true,
+    "password_require_symbols": true,
+    "session_ttl_seconds": 604800,
+    "idle_timeout_seconds": 3600
+  },
+  "roaming_allowed": true,
+  "data_enabled": false,
+  "apn": {
+    "apn": "ctnet",
+    "protocol": "ipv4",
+    "username": "",
+    "password": "",
+    "auth_method": "chap"
+  },
+  "work_mode": "sim",
+  "esim": {
+    "lpac_path": "/opt/simadmin/lpac/lpac",
+    "custom_memory_total_kb": null
+  },
+  "automation": {
+    "enabled": true,
+    "tasks": []
+  },
+  "backup": {
+    "enabled": false,
+    "components": [
+      "config",
+      "sms",
+      "notification_config",
+      "automation_config",
+      "sim_cache",
+      "esim_cache"
+    ],
+    "schedule": {
+      "mode": "manual",
+      "weekdays": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "times": [
+        "04:00"
+      ],
+      "interval_value": 7,
+      "interval_unit": "days"
+    },
+    "cleanup": {
+      "retention_days_enabled": true,
+      "retention_days": 7,
+      "max_files_enabled": true,
+      "max_files": 10
+    },
+    "storage": {
+      "local_dir": "/opt/simadmin/backups"
+    },
+    "last_run_at": "",
+    "last_run_key": ""
+  },
+  "volte": {
+    "feature_enabled": true,
+    "connection_enabled": true,
+    "sms_enabled": true
+  }
+}

@@ -1,0 +1,30 @@
+#!/bin/sh
+. /lib/functions.sh
+
+if [ -x /usr/bin/qmicli ] && [ ! -e /usr/bin/qmicli.real ]; then
+	mv /usr/bin/qmicli /usr/bin/qmicli.real
+fi
+if [ -x /usr/libexec/simadmin/qmicli-wrap ]; then
+	cp -f /usr/libexec/simadmin/qmicli-wrap /usr/bin/qmicli
+	chmod 0755 /usr/bin/qmicli
+fi
+
+mkdir -p /opt/simadmin/data
+
+uci -q set network.modem=interface
+uci -q set network.modem.proto='modemmanager'
+uci -q set network.modem.device='qcom-soc'
+uci -q set network.modem.auth='none'
+uci -q set network.modem.iptype='ipv4'
+uci -q set network.modem.autoconnect='0'
+uci -q set network.modem.disabled='1'
+uci -q commit network
+
+[ -x /etc/init.d/qmi_auto_activate ] && /etc/init.d/qmi_auto_activate disable
+rm -f /etc/rc.d/S98qmi_auto_activate
+[ -x /etc/init.d/qmi-modem-410-init ] && /etc/init.d/qmi-modem-410-init enable
+
+/etc/init.d/simadmin enable
+/etc/init.d/simadmin-watchdog enable
+
+exit 0
