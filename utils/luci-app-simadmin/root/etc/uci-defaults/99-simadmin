@@ -26,5 +26,6 @@ rm -f /etc/rc.d/S98qmi_auto_activate
 
 /etc/init.d/simadmin enable
 /etc/init.d/simadmin-watchdog enable
+/etc/init.d/simadmin-imsd enable
 
 exit 0

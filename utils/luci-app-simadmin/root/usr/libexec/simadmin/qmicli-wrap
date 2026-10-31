@@ -1,2 +1,20 @@
 #!/bin/sh
-exec /usr/bin/qmicli.real --device-open-qmi "$@"
+
+LOG=/var/log/qmicli-calls.log
+
+if [ -f "$LOG" ] && [ "$(wc -c < "$LOG")" -gt 262144 ]; then
+	mv -f "$LOG" "$LOG.1"
+fi
+
+printf '%s %s\n' "$(date '+%F %T')" "$*" >> "$LOG"
+
+/usr/bin/qmicli.real --device-open-qmi "$@" > /tmp/.qo.$$ 2> /tmp/.qe.$$
+rc=$?
+
+cat /tmp/.qo.$$ >> "$LOG"
+cat /tmp/.qe.$$ >> "$LOG"
+cat /tmp/.qo.$$
+cat /tmp/.qe.$$ >&2
+rm -f /tmp/.qo.$$ /tmp/.qe.$$
+
+exit $rc

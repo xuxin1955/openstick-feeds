@@ -14,6 +14,12 @@ modem_ok() {
 	mmcli -L 2>/dev/null | grep -q '/Modem/'
 }
 
+enable_if_disabled() {
+	mmcli -m any 2>/dev/null | grep -q 'state: disabled' || return 0
+	log "modem disabled, enabling"
+	mmcli -m any --enable >/dev/null 2>&1
+}
+
 rebind() {
 	[ "$(cat "$STATE" 2>/dev/null)" = "offline" ] || return 1
 	dev=$(basename "$(ls -d "$DRV"/*.remoteproc 2>/dev/null | head -1)")
@@ -35,6 +41,7 @@ while true; do
 			log "modem back"
 		fi
 		fail=0
+		enable_if_disabled
 	else
 		fail=$((fail + 1))
 		if [ "$fail" -ge "$LIMIT" ]; then

@@ -3,7 +3,7 @@
 
 MODEL_FILE="/sys/firmware/devicetree/base/model"
 LOG_FILE="/var/log/qmi-modem-init.log"
-MAX_RETRIES=10
+MAX_RETRIES=120
 RETRY_DELAY=5
 DEVICE_PATH="qcom-soc"
 
@@ -269,6 +269,8 @@ reset_wf2_eps_apn() {
 }
 
 repower_sim() {
+    log "Repower Sim SKIPPED (SIM already ready)"
+    return 0
     log "Repower Sim"
     qmicli -d /dev/wwan0qmi0 -p --uim-sim-power-off=1
     sleep 1

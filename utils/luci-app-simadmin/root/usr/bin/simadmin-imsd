@@ -1,0 +1,68 @@
+#!/bin/sh
+
+LOG=/var/log/simadmin-ims.log
+INTERVAL=20
+GRACE=180
+MAXTRY=3
+COOLDOWN=1800
+
+log() {
+	echo "$(date '+%F %T') $1" >> "$LOG"
+}
+
+mark=$(logread 2>/dev/null | wc -l)
+since=0
+tries=0
+
+while true; do
+	sleep "$INTERVAL"
+	since=$((since + INTERVAL))
+
+	if ! mmcli -L 2>/dev/null | grep -q Modem; then
+		since=0
+		continue
+	fi
+	if mmcli -m any 2>/dev/null | grep -qE 'sim-missing|sim: none'; then
+		since=0
+		continue
+	fi
+	if ! mmcli -m any 2>/dev/null | grep -q 'state: enabled'; then
+		since=0
+		continue
+	fi
+
+	total=$(logread 2>/dev/null | wc -l)
+	if [ "$total" -ge "$mark" ]; then
+		inc=$(logread 2>/dev/null | tail -n +$((mark + 1)))
+	else
+		inc=$(logread 2>/dev/null)
+	fi
+	mark=$total
+
+	case "$inc" in
+		*"REGISTER acceptance"*|*"REGISTER 200"*)
+			if [ "$tries" -ne 0 ]; then
+				log "registered after $tries retry"
+			fi
+			tries=0
+			since=0
+			continue
+			;;
+	esac
+
+	[ "$since" -lt "$GRACE" ] && continue
+
+	fail=$(printf '%s' "$inc" | grep -oiE 'pcscf_missing|REGISTER (4[0-9]{2}|5[0-9]{2})|recv_timeout|no route|timeout' | sort -u | tr '\n' ' ')
+	[ -n "$fail" ] || fail="silent"
+
+	if [ "$tries" -lt "$MAXTRY" ]; then
+		tries=$((tries + 1))
+		log "retry $tries/$MAXTRY [$fail]"
+		/etc/init.d/simadmin restart >/dev/null 2>&1
+		since=0
+	else
+		log "give up [$fail]"
+		tries=0
+		since=$((GRACE - COOLDOWN))
+	fi
+done
