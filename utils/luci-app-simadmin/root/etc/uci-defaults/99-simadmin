@@ -11,14 +11,10 @@ fi
 
 mkdir -p /opt/simadmin/data
 
-uci -q set network.modem=interface
-uci -q set network.modem.proto='modemmanager'
-uci -q set network.modem.device='qcom-soc'
-uci -q set network.modem.auth='none'
-uci -q set network.modem.iptype='ipv4'
-uci -q set network.modem.autoconnect='0'
-uci -q set network.modem.disabled='1'
+uci -q delete network.modem
+uci -q del_list firewall.@zone[1].network='modem'
 uci -q commit network
+uci -q commit firewall
 
 [ -x /etc/init.d/qmi_auto_activate ] && /etc/init.d/qmi_auto_activate disable
 rm -f /etc/rc.d/S98qmi_auto_activate

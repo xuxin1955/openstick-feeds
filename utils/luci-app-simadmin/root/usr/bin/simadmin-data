@@ -1,0 +1,245 @@
+#!/bin/sh
+
+APNFILE=/var/run/simadmin-data.apn
+STATE=/var/run/simadmin-data.state
+BOOT=/var/run/simadmin-data.boot
+DNSDIR=/tmp/resolv.conf.d
+NETIF=${NETIF:-auto}
+INTERVAL=${INTERVAL:-15}
+WAIT_IMS=${WAIT_IMS:-600}
+
+log() { logger -t simadmin-data "$*"; }
+
+mask2prefix() {
+	echo "$1" | awk -F. '{s=0;for(i=1;i<=NF;i++){v=$i+0;while(v>0){s+=v%2;v=int(v/2)}};print s}'
+}
+
+primary_dev() {
+	mmcli -m any 2>/dev/null | sed -n 's/^.*primary port: *\([^ ]*\).*$/\1/p' | head -n 1
+}
+
+cur_apn() {
+	a=$(mmcli -m any 2>/dev/null | sed -n 's/^.*initial bearer apn: *\([^ ]*\).*$/\1/p' | head -n 1)
+	case "$a" in
+	"" | "--" | "unknown") echo "" ;;
+	*) echo "$a" ;;
+	esac
+}
+
+cur_op() {
+	mmcli -m any 2>/dev/null | sed -n 's/^.*operator id: *\([0-9][0-9]*\).*$/\1/p' | head -n 1
+}
+
+apn_for_op() {
+	case "$1" in
+	46000 | 46002 | 46004 | 46007 | 46008) echo "cmnet" ;;
+	46001 | 46006 | 46009) echo "3gnet" ;;
+	46003 | 46005 | 46011) echo "ctnet" ;;
+	*) echo "" ;;
+	esac
+}
+
+net_addr() {
+	ip -4 -o addr show dev "$1" 2>/dev/null | awk '{print $4}' | head -n 1
+}
+
+cand_ifaces() {
+	if [ "$NETIF" != "auto" ]; then
+		echo "$NETIF"
+		return 0
+	fi
+	l=""
+	i=0
+	while [ "$i" -le 7 ]; do
+		n=wwan$i
+		if [ -e "/sys/class/net/$n" ]; then
+			s=$(cat "/sys/class/net/$n/operstate" 2>/dev/null)
+			[ "$s" = "down" ] || l="$l $n"
+		fi
+		i=$((i+1))
+	done
+	[ -n "$l" ] || l=" wwan0"
+	for n in $l; do
+		echo "$n"
+	done
+}
+
+route_metric() {
+	b=$(ip route show default 2>/dev/null | grep -v "dev $1" | awk '{m=0;for(i=1;i<=NF;i++)if($i=="metric")m=$(i+1);print m}' | sort -n | head -n 1)
+	if [ -n "$b" ]; then
+		echo $((b + 100))
+	else
+		echo 10
+	fi
+}
+
+boot_secs() {
+	[ -f "$BOOT" ] || date +%s > "$BOOT" 2>/dev/null
+	n=$(date +%s 2>/dev/null)
+	b=$(cat "$BOOT" 2>/dev/null)
+	[ -n "$n" ] || return 1
+	[ -n "$b" ] || return 1
+	echo $((n - b))
+}
+
+ims_ok() {
+	logread 2>/dev/null | grep -q "IMS REGISTER 200 OK"
+}
+
+ims_wait_done() {
+	s=$(boot_secs)
+	[ -n "$s" ] || return 1
+	[ "$s" -ge "$WAIT_IMS" ]
+}
+
+open_session() {
+	d=$1
+	apn=$2
+	op=$3
+	cid=$(qmicli -p -d "$d" --wds-noop --client-no-release-cid 2>/dev/null | sed -n "s/.*CID: '\([0-9]*\)'.*/\1/p" | head -n 1)
+	[ -n "$cid" ] || { log "noop failed dev=$d"; return 1; }
+	if qmicli -p -d "$d" --wds-start-network="apn=$apn,ip-type=4" --client-cid="$cid" --client-no-release-cid >/dev/null 2>&1; then
+		if printf '%s %s %s\n' "$d" "$cid" "$op" > "$STATE"; then
+			printf '%s\n' "$apn" > "$APNFILE" 2>/dev/null
+			log "session opened dev=$d cid=$cid apn=$apn op=$op"
+			return 0
+		fi
+		log "state write failed dev=$d cid=$cid"
+		qmicli -p -d "$d" --client-release-cid="$cid" >/dev/null 2>&1
+		return 1
+	fi
+	qmicli -p -d "$d" --client-release-cid="$cid" >/dev/null 2>&1
+	log "start-network failed dev=$d cid=$cid apn=$apn op=$op"
+	return 1
+}
+
+apply_addr() {
+	n=$1
+	want=$2
+	have=$(net_addr "$n")
+	[ "$have" = "$want" ] && return 0
+	ip link set "$n" up 2>/dev/null
+	[ -n "$have" ] && ip addr del "$have" dev "$n" 2>/dev/null
+	ip addr add "$want" dev "$n" 2>/dev/null
+	[ "$(net_addr "$n")" = "$want" ] || return 1
+	return 0
+}
+
+probe() {
+	g=$1
+	ping -c 1 -W 1 223.5.5.5 >/dev/null 2>&1 && return 0
+	[ -n "$g" ] || return 1
+	ping -c 1 -W 1 "$g" >/dev/null 2>&1 && return 0
+	return 1
+}
+
+run_once() {
+	if ! ims_ok; then
+		if ! ims_wait_done; then
+			log "wait ims"
+			return 1
+		fi
+		log "ims timeout"
+	fi
+
+	pn=$(primary_dev)
+	[ -n "$pn" ] || { log "no primary port"; return 1; }
+	d=/dev/$pn
+	[ -c "$d" ] || { log "missing $d"; return 1; }
+
+	sd=""
+	cid=""
+	sop=""
+	if [ -f "$STATE" ]; then
+		read -r sd cid sop < "$STATE"
+	fi
+	op=$(cur_op)
+	[ -n "$op" ] || op="$sop"
+	if [ "$sd" != "$d" ] || [ -z "$cid" ] || [ "$sop" != "$op" ]; then
+		if [ -n "$cid" ]; then
+			qmicli -p -d "$sd" --client-release-cid="$cid" >/dev/null 2>&1
+			rm -f "$STATE"
+		fi
+		apn=$(cur_apn)
+		[ -n "$apn" ] || apn=$(apn_for_op "$op")
+		[ -n "$apn" ] || apn=$(sed -n '1s/ .*//p' "$APNFILE" 2>/dev/null)
+		[ -n "$apn" ] || apn=ctnet
+		open_session "$d" "$apn" "$op" || return 1
+		read -r sd cid sop < "$STATE"
+	fi
+
+	out=$(qmicli -p -d "$d" --wds-get-current-settings --client-cid="$cid" --client-no-release-cid 2>/dev/null)
+	a=$(echo "$out" | sed -n 's/^ *IPv4 address: *\([0-9][0-9.]*\).*/\1/p' | head -n 1)
+	m=$(echo "$out" | sed -n 's/^ *IPv4 subnet mask: *\([0-9][0-9.]*\).*/\1/p' | head -n 1)
+	g=$(echo "$out" | sed -n 's/^ *IPv4 gateway address: *\([0-9][0-9.]*\).*/\1/p' | head -n 1)
+	n1=$(echo "$out" | sed -n 's/^ *IPv4 primary DNS: *\([0-9][0-9.]*\).*/\1/p' | head -n 1)
+
+	if [ -z "$a" ]; then
+		log "no settings dev=$d cid=$cid"
+		qmicli -p -d "$d" --client-release-cid="$cid" >/dev/null 2>&1
+		rm -f "$STATE"
+		return 1
+	fi
+
+	p=$(mask2prefix "$m")
+	[ -n "$p" ] || p=32
+	want="$a/$p"
+
+	okif=""
+	failif=""
+	mt=""
+	cands=$(cand_ifaces)
+	total=$(echo "$cands" | wc -w)
+	for n in $cands; do
+		apply_addr "$n" "$want" || continue
+		mt=$(route_metric "$n")
+		if [ -n "$g" ]; then
+			ip route replace default via "$g" dev "$n" metric "$mt" 2>/dev/null
+		else
+			ip route replace default dev "$n" metric "$mt" 2>/dev/null
+		fi
+		if probe "$g"; then
+			okif=$n
+			if [ -n "$failif" ]; then
+				ip addr del "$want" dev "$failif" 2>/dev/null
+				ip route del default dev "$failif" 2>/dev/null
+			fi
+			break
+		fi
+		if [ -n "$failif" ]; then
+			ip addr del "$want" dev "$failif" 2>/dev/null
+			ip route del default dev "$failif" 2>/dev/null
+		fi
+		failif=$n
+	done
+
+	if [ -z "$okif" ]; then
+		log "no working data iface want=$want gw=$g"
+		if [ "$total" -gt 1 ] && [ -n "$failif" ]; then
+			ip addr del "$want" dev "$failif" 2>/dev/null
+			ip route del default dev "$failif" 2>/dev/null
+		fi
+		return 1
+	fi
+
+	log "up $okif $want gw=$g metric=$mt"
+
+	if [ -n "$n1" ]; then
+		mkdir -p "$DNSDIR" 2>/dev/null
+		echo "nameserver $n1" > "$DNSDIR/10-simadmin-data" 2>/dev/null
+	fi
+
+	return 0
+}
+
+case "$1" in
+--once)
+	run_once
+	exit $?
+	;;
+esac
+
+while :; do
+	run_once
+	sleep "$INTERVAL"
+done

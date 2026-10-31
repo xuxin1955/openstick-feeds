@@ -13,16 +13,6 @@ uci add_list network.@device[0].ports='usb0'
 # set firewall mtu_fx
 #uci set firewall.@zone[1].mtu_fix='0'
 
-# create modem interface
-uci set network.modem=interface
-uci set network.modem.proto='modemmanager'
-uci set network.modem.device='qcom-soc'
-uci set network.modem.auth='none'
-uci set network.modem.iptype='ipv4v6'
-uci set network.modem.autoconnect='1'
-uci set network.modem.auto='1'
-uci del_list firewall.@zone[1].network='modem'
-uci add_list firewall.@zone[1].network='modem'
 uci del_list firewall.@zone[1].device='wwan0'
 uci add_list firewall.@zone[1].device='wwan0'
 uci commit
