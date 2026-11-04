@@ -98,7 +98,9 @@ open_session() {
 	op=$3
 	cid=$(qmicli -p -d "$d" --wds-noop --client-no-release-cid 2>/dev/null | sed -n "s/.*CID: '\([0-9]*\)'.*/\1/p" | head -n 1)
 	[ -n "$cid" ] || { log "noop failed dev=$d"; return 1; }
-	if qmicli -p -d "$d" --wds-start-network="apn=$apn,ip-type=4" --client-cid="$cid" --client-no-release-cid >/dev/null 2>&1; then
+	na="ip-type=4"
+	[ -n "$apn" ] && na="apn=$apn,ip-type=4"
+	if qmicli -p -d "$d" --wds-start-network="$na" --client-cid="$cid" --client-no-release-cid >/dev/null 2>&1; then
 		if printf '%s %s %s\n' "$d" "$cid" "$op" > "$STATE"; then
 			printf '%s\n' "$apn" > "$APNFILE" 2>/dev/null
 			log "session opened dev=$d cid=$cid apn=$apn op=$op"
@@ -160,10 +162,15 @@ run_once() {
 			qmicli -p -d "$sd" --client-release-cid="$cid" >/dev/null 2>&1
 			rm -f "$STATE"
 		fi
-		apn=$(cur_apn)
-		[ -n "$apn" ] || apn=$(apn_for_op "$op")
-		[ -n "$apn" ] || apn=$(sed -n '1s/ .*//p' "$APNFILE" 2>/dev/null)
-		[ -n "$apn" ] || apn=ctnet
+		case "$op" in
+		460*)
+			apn=$(cur_apn)
+			[ -n "$apn" ] || apn=$(apn_for_op "$op")
+			[ -n "$apn" ] || apn=$(sed -n '1s/ .*//p' "$APNFILE" 2>/dev/null)
+			[ -n "$apn" ] || apn=ctnet
+			;;
+		*) apn=$(cur_apn) ;;
+		esac
 		open_session "$d" "$apn" "$op" || return 1
 		read -r sd cid sop < "$STATE"
 	fi

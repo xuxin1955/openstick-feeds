@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-simadmin
 PKG_VERSION:=1.2.3
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKG_LICENSE:=Proprietary
 PKG_MAINTAINER:=local
 
@@ -31,6 +31,7 @@ define Package/luci-app-simadmin/install
 	$(INSTALL_BIN) ./root/etc/init.d/simadmin-data $(1)/etc/init.d/simadmin-data
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_BIN) ./root/etc/uci-defaults/99-simadmin $(1)/etc/uci-defaults/99-simadmin
+	$(INSTALL_BIN) ./root/etc/uci-defaults/98-simadmin-menu $(1)/etc/uci-defaults/98-simadmin-menu
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) ./root/usr/bin/systemctl $(1)/usr/bin/systemctl
 	$(INSTALL_BIN) ./root/usr/bin/nmcli $(1)/usr/bin/nmcli
