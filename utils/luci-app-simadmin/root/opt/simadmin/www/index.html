@@ -1,11 +1,32 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN" translate="no">
   <head>
     <meta charset="UTF-8" />
+    <meta name="google" content="notranslate" />
     <link rel="icon" type="image/svg+xml" href="/simadmin-logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SimAdmin</title>
-    <script type="module" crossorigin src="/assets/index-DL4RP_RC.js?v=2"></script>
+    <script>
+      (function () {
+        var rm = Node.prototype.removeChild;
+        Node.prototype.removeChild = function (c) {
+          if (c && c.parentNode !== this) {
+            if (c.parentNode) return rm.call(c.parentNode, c);
+            return c;
+          }
+          return rm.call(this, c);
+        };
+        var ib = Node.prototype.insertBefore;
+        Node.prototype.insertBefore = function (n, ref) {
+          if (ref && ref.parentNode !== this) {
+            if (ref.parentNode) return ib.call(ref.parentNode, n, ref);
+            return this.appendChild(n);
+          }
+          return ib.call(this, n, ref);
+        };
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-DL4RP_RC.js?v=4"></script>
     <link rel="modulepreload" crossorigin href="/assets/vendor-react-CYq3-Frw.js">
     <link rel="modulepreload" crossorigin href="/assets/vendor-mui-DlAYcaF8.js">
     <link rel="modulepreload" crossorigin href="/assets/vendor-query-5WCKPPn8.js">
