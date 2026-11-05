@@ -25,7 +25,7 @@ start_service() {
 		populate_disk_labels
 		procd_open_instance
 		procd_set_param oom_score_adj $OOM_ADJ
-		procd_set_param command $PROG -P -r -s
+		procd_set_param command $PROG -P -s
 		procd_close_instance
 }
 
