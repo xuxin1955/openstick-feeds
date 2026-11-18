@@ -1,0 +1,13 @@
+{
+	"admin/network/wifi": {
+		"title": "WiFi 中继",
+		"order": 21,
+		"action": {
+			"type": "view",
+			"path": "wifi-relay/wr2"
+		},
+		"depends": {
+			"acl": [ "luci-app-wifi" ]
+		}
+	}
+}

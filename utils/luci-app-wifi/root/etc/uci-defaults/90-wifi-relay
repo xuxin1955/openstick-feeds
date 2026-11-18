@@ -1,0 +1,28 @@
+#!/bin/sh
+
+[ -f /etc/config/wireless ] || exit 0
+
+uci -q get wireless.wifi_relay_sta >/dev/null 2>&1 && exit 0
+
+ap_dev=""
+for s in $(uci show wireless 2>/dev/null | sed -n 's/^wireless\.\([^=]*\)=wifi-iface$/\1/p'); do
+	[ "$(uci -q get "wireless.$s.mode")" = "ap" ] || continue
+	ap_dev="$(uci -q get "wireless.$s.device")"
+	break
+done
+[ -z "$ap_dev" ] && exit 0
+
+uci set wireless.wifi_relay_sta=wifi-iface
+uci set wireless.wifi_relay_sta.device="$ap_dev"
+uci set wireless.wifi_relay_sta.mode=sta
+uci set wireless.wifi_relay_sta.network=wwan
+uci set wireless.wifi_relay_sta.disabled=1
+uci commit wireless
+
+uci -q get network.wwan >/dev/null 2>&1 || {
+	uci set network.wwan=interface
+	uci set network.wwan.proto=dhcp
+	uci commit network
+}
+
+exit 0

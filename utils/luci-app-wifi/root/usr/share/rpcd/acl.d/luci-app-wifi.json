@@ -1,0 +1,19 @@
+{
+	"luci-app-wifi": {
+		"description": "WiFi Relay uplink manager",
+		"read": {
+			"file": {
+				"/usr/libexec/wifi-relay.sh": [ "exec" ],
+				"/tmp/wifi-relay-scan.json": [ "read" ]
+			},
+			"uci": [ "wireless", "network" ]
+		},
+		"write": {
+			"file": {
+				"/usr/libexec/wifi-relay.sh": [ "exec" ],
+				"/tmp/.uci/*": [ "write" ]
+			},
+			"uci": [ "wireless", "network" ]
+		}
+	}
+}
