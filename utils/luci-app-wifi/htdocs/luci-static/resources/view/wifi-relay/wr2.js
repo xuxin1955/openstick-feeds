@@ -361,8 +361,8 @@ return view.extend({
 			);
 		}
 		if (s.disabled === '1')
-			return main('idle', '未启用', '点击下方扫描并选择上游网络');
-		return main('idle', '未连接', '点击下方扫描并选择上游网络');
+			return main('idle', '未启用', '点击上方扫描并选择上游网络');
+		return main('idle', '未连接', '点击上方扫描并选择上游网络');
 	},
 
 	refreshStatus: function() {

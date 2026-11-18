@@ -2,6 +2,10 @@
 
 [ -f /etc/config/wireless ] || exit 0
 
+if uci -q get wireless.wifi_relay_sta >/dev/null 2>&1 || uci -q get network.wwan >/dev/null 2>&1; then
+	[ -f /usr/libexec/wifi-relay.sh ] && sh /usr/libexec/wifi-relay.sh fwsetup >/dev/null 2>&1
+fi
+
 uci -q get wireless.wifi_relay_sta >/dev/null 2>&1 && exit 0
 
 ap_dev=""
@@ -24,5 +28,7 @@ uci -q get network.wwan >/dev/null 2>&1 || {
 	uci set network.wwan.proto=dhcp
 	uci commit network
 }
+
+[ -f /usr/libexec/wifi-relay.sh ] && sh /usr/libexec/wifi-relay.sh fwsetup >/dev/null 2>&1
 
 exit 0

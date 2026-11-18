@@ -9,6 +9,55 @@ json_esc() {
 	printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
 }
 
+fw_attach_wwan() {
+	local net="$1" z zn n has found=0
+
+	[ -n "$net" ] || return 1
+	[ -f /etc/config/firewall ] || return 0
+
+	for z in $(uci show firewall 2>/dev/null | sed -n 's/^firewall\.\([^=]*\)=zone$/\1/p'); do
+		zn="$(uci -q get "firewall.$z.name" 2>/dev/null | sed "s/['\"]//g")"
+		[ "$zn" = "wan" ] || continue
+		found=1
+		has=0
+		for n in $(uci -q get "firewall.$z.network" 2>/dev/null | sed "s/['\"]//g"); do
+			[ "$n" = "$net" ] && has=1
+		done
+		[ "$has" = 1 ] || uci add_list "firewall.$z.network=$net"
+	done
+
+	if [ "$found" = 0 ]; then
+		for z in $(uci show firewall 2>/dev/null | sed -n 's/^firewall\.\([^=]*\)=zone$/\1/p'); do
+			[ "$(uci -q get "firewall.$z.masq" 2>/dev/null | sed "s/['\"]//g")" = "1" ] || continue
+			found=1
+			has=0
+			for n in $(uci -q get "firewall.$z.network" 2>/dev/null | sed "s/['\"]//g"); do
+				[ "$n" = "$net" ] && has=1
+			done
+			[ "$has" = 1 ] || uci add_list "firewall.$z.network=$net"
+			break
+		done
+	fi
+
+	if [ "$found" = 0 ]; then
+		uci set firewall.wifi_relay_wan=zone
+		uci set firewall.wifi_relay_wan.name=wan
+		uci set firewall.wifi_relay_wan.input=REJECT
+		uci set firewall.wifi_relay_wan.output=ACCEPT
+		uci set firewall.wifi_relay_wan.forward=REJECT
+		uci set firewall.wifi_relay_wan.masq=1
+		uci set firewall.wifi_relay_wan.mtu_fix=1
+		uci add_list firewall.wifi_relay_wan.network=wan
+		uci add_list firewall.wifi_relay_wan.network="$net"
+		uci set firewall.wifi_relay_fwd=forwarding
+		uci set firewall.wifi_relay_fwd.src=lan
+		uci set firewall.wifi_relay_fwd.dest=wan
+	fi
+
+	uci commit firewall
+	return 0
+}
+
 ap_iface() {
 	iw dev 2>/dev/null | awk '/Interface/{i=$2} /type AP/{print i; exit}'
 }
@@ -182,6 +231,8 @@ do_configure() {
 		uci set "network.$STA_NET.proto=dhcp"
 	fi
 
+	fw_attach_wwan "$STA_NET"
+
 	for s in $(uci show wireless 2>/dev/null | sed -n "s/^wireless\.\([^.]*\)\.mode=.*/\1/p"); do
 		[ "$s" = "$STA_SEC" ] && continue
 		[ "$(uci -q get "wireless.$s.mode" | sed "s/['\"]//g")" = "sta" ] || continue
@@ -221,5 +272,6 @@ case "$1" in
 	status)      do_status ;;
 	configure)   shift; do_configure "$@" ;;
 	disconnect)  do_disconnect ;;
-	*)           echo "usage: $0 {scan|status|configure|disconnect}"; exit 1 ;;
+	fwsetup)     fw_attach_wwan "$STA_NET" && echo "OK" ;;
+	*)           echo "usage: $0 {scan|status|configure|disconnect|fwsetup}"; exit 1 ;;
 esac
