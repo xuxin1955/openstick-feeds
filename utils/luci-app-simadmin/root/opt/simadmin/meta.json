@@ -1,9 +1,9 @@
 {
-    "version": "1.2.3",
-    "commit": "f451b1d",
-    "build_time": "2026-10-09T15:55:55+08:00",
-    "binary_md5": "957ee39a5c1e8ca48a341a9be0f8c217",
-    "frontend_md5": "7cc19dd998e5789df6118c30f781fc02",
+    "version": "1.2.5",
+    "commit": "3cb7cb8",
+    "build_time": "2026-11-19T14:46:03+08:00",
+    "binary_md5": "37b6a2fc8368c2cf51a6fad553cae074",
+    "frontend_md5": "c9c63c24860b7d130cac5ee39ac992ac",
     "arch": "aarch64-unknown-linux-musl",
     "edition": "volte"
 }
